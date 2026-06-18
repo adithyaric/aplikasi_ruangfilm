@@ -100,7 +100,8 @@ class UserController extends Controller
         $validatedData = $request->validate([
             'name' => 'required',
             'email' => 'required|email',
-            'role' => 'required'
+            'role' => 'required',
+            'no_hp' => 'nullable|string|max:20',
         ]);
 
         User::where('id', $user->id)->update($validatedData);
@@ -155,6 +156,14 @@ class UserController extends Controller
         return view('user.indexAuth', [
             'title' => 'User Author',
             'users' => User::Where('role', 'peserta')->latest()->get(),
+        ]);
+    }
+
+    public function indexKur()
+    {
+        return view('user.index', [
+            'title' => 'User Kurator & Juri',
+            'users' => User::whereIn('role', ['kurator', 'juri'])->latest()->get(),
         ]);
     }
 }

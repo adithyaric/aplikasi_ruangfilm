@@ -59,4 +59,19 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Category::class);
     }
+
+    public function cart()
+    {
+        return $this->hasOne(Cart::class);
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function juryScores()
+    {
+        return $this->hasMany(JuryScore::class, 'jury_id');
+    }
 }

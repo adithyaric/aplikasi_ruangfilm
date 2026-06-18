@@ -19,11 +19,15 @@
                             </ul>
                         </div>
                         @endif
-                        <input type="hidden" name="user_id" value="{{ Auth::user()->id }}">
-                        <input type="hidden" name="status" value="1">
-
                         {{-- Informasi Film --}}
                         <h5 style="font-weight:700; border-left:3px solid #1db9a0; padding-left:10px; margin:0 0 16px;">Informasi Film</h5>
+
+                        @if(isset($activeSetting))
+                        <div class="alert alert-info">
+                            Submission aktif: <strong>{{ $activeSetting->name }}</strong><br>
+                            Kategori peserta: <strong>{{ auth()->user()->category->name ?? '-' }}</strong>
+                        </div>
+                        @endif
 
                         <div class="form-group">
                             <label>Judul Film <span class="text-danger">*</span></label>

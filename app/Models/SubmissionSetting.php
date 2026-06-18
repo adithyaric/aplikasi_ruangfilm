@@ -9,27 +9,67 @@ class SubmissionSetting extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['open_at', 'close_at'];
+    protected $fillable = ['name', 'open_at', 'close_at'];
 
     protected $casts = [
         'open_at'  => 'datetime',
         'close_at' => 'datetime',
     ];
 
-    // Ambil setting aktif (selalu hanya 1 row)
-    public static function current()
+    public function films()
     {
-        return static::first();
+        return $this->hasMany(Film::class);
     }
 
-    // Cek apakah submission sedang dibuka
+    public function getDisplayNameAttribute()
+    {
+        return $this->name ?: 'Periode ' . optional($this->open_at)->format('F Y');
+    }
+
+    public function scopeActive($query)
+    {
+        $now = now();
+
+        return $query->where('open_at', '<=', $now)
+            ->where('close_at', '>=', $now);
+    }
+
+    public static function current()
+    {
+        return static::active()->orderBy('open_at')->first()
+            ?: static::where('open_at', '>', now())->orderBy('open_at')->first()
+            ?: static::orderByDesc('close_at')->first();
+    }
+
+    public static function currentActive()
+    {
+        return static::active()->orderBy('open_at')->first();
+    }
+
     public static function isOpen()
     {
-        $setting = static::current();
-        if (!$setting) return false;
+        return static::currentActive() !== null;
+    }
 
-        $now = now();
-        return $now->greaterThanOrEqualTo($setting->open_at)
-            && $now->lessThanOrEqualTo($setting->close_at);
+    public static function overlaps($openAt, $closeAt, $ignoreId = null)
+    {
+        return static::when($ignoreId, function ($query) use ($ignoreId) {
+            $query->where('id', '!=', $ignoreId);
+        })->where(function ($query) use ($openAt, $closeAt) {
+            $query->whereBetween('open_at', [$openAt, $closeAt])
+                ->orWhereBetween('close_at', [$openAt, $closeAt])
+                ->orWhere(function ($inner) use ($openAt, $closeAt) {
+                    $inner->where('open_at', '<=', $openAt)
+                        ->where('close_at', '>=', $closeAt);
+                });
+        })->exists();
+    }
+
+    public static function resolveForDate($date)
+    {
+        return static::where('open_at', '<=', $date)
+            ->where('close_at', '>=', $date)
+            ->orderBy('open_at')
+            ->first();
     }
 }

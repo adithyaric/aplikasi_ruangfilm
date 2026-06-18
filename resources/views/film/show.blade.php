@@ -2,6 +2,20 @@
 @section('container')
 @php
 $detail = $film->user->detail;
+$statusMap = [
+    'pending' => ['label' => 'Menunggu Kurasi', 'color' => '#b87f00', 'bg' => '#fff8e0'],
+    'approved' => ['label' => 'Lolos Kurasi', 'color' => '#198754', 'bg' => '#e6f9ef'],
+    'rejected' => ['label' => 'Ditolak Kurator', 'color' => '#dc3545', 'bg' => '#fde8e8'],
+    'winner' => ['label' => $film->winner_rank ?: 'Pemenang', 'color' => '#6f42c1', 'bg' => '#f0ebff'],
+];
+$s = $statusMap[$film->display_status] ?? ['label' => $film->display_status_label, 'color' => '#888', 'bg' => '#f5f5f5'];
+$timelineSteps = [
+    1 => 'Submission Dikirim',
+    2 => 'Proses Kurasi',
+    3 => $film->curation_status === 'rejected' ? 'Ditolak Kurator' : 'Lolos Kurasi',
+    4 => $film->winner_rank ?: 'Hasil Juri',
+];
+$currentStep = $film->winner_rank ? 4 : ($film->curation_status === 'approved' || $film->curation_status === 'rejected' ? 3 : 2);
 @endphp
 <section class="content">
     <div class="row">
@@ -34,20 +48,12 @@ $detail = $film->user->detail;
                                 <div style="flex:1; min-width:0;">
                                     <div style="font-size:20px; font-weight:600; color:#222; margin-bottom:4px;">{{ $film->name }}</div>
                                     <div style="font-size:13px; color:#888; margin-bottom:10px;">
-                                        Kategori : {{ $film->user->category->name ?? '-' }}
+                                        Kategori : {{ $film->category->name ?? '-' }}
+                                        @if($film->submissionSetting)
+                                        <span style="margin-left:8px;">• Periode: {{ $film->submissionSetting->name }}</span>
+                                        @endif
                                     </div>
                                     <div style="margin-bottom:10px;">
-                                        @php
-                                        $statusMap = [
-                                        1 => ['label' => 'Submitted', 'color' => '#b87f00', 'bg' => '#fff8e0'],
-                                        2 => ['label' => 'Verified', 'color' => '#0d6efd', 'bg' => '#e7f1ff'],
-                                        3 => ['label' => 'Under Review', 'color' => '#e6a800', 'bg' => '#fff8e0'],
-                                        4 => ['label' => 'Official Selection', 'color' => '#198754', 'bg' => '#e6f9ef'],
-                                        5 => ['label' => 'Not Selected', 'color' => '#dc3545', 'bg' => '#fde8e8'],
-                                        6 => ['label' => 'Winner', 'color' => '#6f42c1', 'bg' => '#f0ebff'],
-                                        ];
-                                        $s = $statusMap[$film->status] ?? ['label' => $film->status, 'color' => '#888', 'bg' => '#f5f5f5'];
-                                        @endphp
                                         <span style="background:{{ $s['bg'] }}; color:{{ $s['color'] }}; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600;">
                                             {{ $s['label'] }}
                                         </span>
@@ -94,20 +100,11 @@ $detail = $film->user->detail;
                                 {{-- Status Timeline --}}
                                 <div style="background:#fff; border:0.5px solid #e0e0e0; border-radius:10px; padding:16px;">
                                     <div style="font-size:13px; font-weight:600; border-left:3px solid #1db9a0; padding-left:10px; margin-bottom:14px;">Status submission</div>
-                                    @php
-                                    $steps = [
-                                    1 => 'Submitted',
-                                    2 => 'Verified',
-                                    3 => 'Under Review',
-                                    4 => 'Official Selection / Not Selected',
-                                    6 => 'Winner',
-                                    ];
-                                    @endphp
                                     <div style="display:flex; flex-direction:column; gap:8px;">
-                                        @foreach($steps as $step => $label)
+                                        @foreach($timelineSteps as $step => $label)
                                         @php
-                                        $isActive = $film->status == $step;
-                                        $isPast = $film->status > $step;
+                                        $isActive = $currentStep == $step;
+                                        $isPast = $currentStep > $step;
                                         $opacity = ($isActive || $isPast) ? '1' : '0.35';
                                         $dotColor = $isActive ? '#e6a800' : ($isPast ? '#1db9a0' : '#ccc');
                                         @endphp
@@ -278,7 +275,7 @@ $detail = $film->user->detail;
                                     </div>
                                     <div>
                                         <div style="font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:3px;">Kategori</div>
-                                        <div style="font-size:14px; font-weight:500;">{{ $film->user->category->name ?? '-' }}</div>
+                                        <div style="font-size:14px; font-weight:500;">{{ $film->category->name ?? '-' }}</div>
                                     </div>
                                     <div>
                                         <div style="font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:3px;">Durasi</div>
@@ -392,11 +389,11 @@ $detail = $film->user->detail;
                             </div>
 
                             {{-- Other (Press Kit / Surat Rekomendasi) --}}
-                            @if($film->other_1)
+                                    @if($film->other_1)
                             <hr style="border:none; border-top:0.5px solid #f0f0f0; margin:14px 0;">
                             <div>
                                 <div style="font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;">
-                                    @if($film->user->category_id == 1) Press Kit
+                                    @if($film->category_id == 1) Press Kit
                                     @elseif(in_array($film->category_id, [2,4])) Surat Rekomendasi Sekolah
                                     @endif
                                 </div>
@@ -431,10 +428,10 @@ $detail = $film->user->detail;
                         <div style="background:#fff; border:0.5px solid #e0e0e0; border-radius:10px; padding:16px;">
                             <div style="font-size:13px; font-weight:600; border-left:3px solid #1db9a0; padding-left:10px; margin-bottom:14px;">Status submission</div>
                             <div style="display:flex; flex-direction:column; gap:8px;">
-                                @foreach($steps as $step => $label)
+                                @foreach($timelineSteps as $step => $label)
                                 @php
-                                $isActive = $film->status == $step;
-                                $isPast = $film->status > $step;
+                                $isActive = $currentStep == $step;
+                                $isPast = $currentStep > $step;
                                 $opacity = ($isActive || $isPast) ? '1' : '0.35';
                                 $dotColor = $isActive ? '#e6a800' : ($isPast ? '#1db9a0' : '#ccc');
                                 @endphp

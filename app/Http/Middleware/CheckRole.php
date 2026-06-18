@@ -17,12 +17,19 @@ class CheckRole
     public function handle(Request $request, Closure $next)
     {
         $roles = array_slice(func_get_args(), 2);
-        foreach ($roles as $role){
-            $user = auth()->user()->role;
-            if($user == $role) {
+        $user = auth()->user();
+
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        foreach ($roles as $role) {
+            if ($user->role == $role) {
                 return $next($request);
             }
         }
-        return redirect('/dashboard-user');
+
+        return redirect()->route('dashboard')
+            ->with('warning', 'Anda tidak memiliki akses ke halaman tersebut.');
     }
 }

@@ -17,10 +17,10 @@ class FilmController extends Controller
         $title = 'Submission';
         $categories = Category::orderBy('name')->get();
 
-        if (auth()->user()->role == 'admin') {
-            $films = Film::with(['user.category'])->latest()->get();
+        if (in_array(auth()->user()->role, ['admin', 'adminsub'], true)) {
+            $films = Film::with(['user.category', 'category', 'submissionSetting'])->latest()->get();
         } else {
-            $films = Film::with(['user.category'])
+            $films = Film::with(['user.category', 'category', 'submissionSetting'])
                 ->where('user_id', auth()->id())
                 ->latest()->get();
         }
@@ -30,8 +30,9 @@ class FilmController extends Controller
 
     public function create()
     {
+        $activeSetting = SubmissionSetting::currentActive();
 
-        if (!SubmissionSetting::isOpen()) {
+        if (!$activeSetting) {
             return redirect()->back()->with('warning', 'Submission Telah Ditutup');
         }
         $detail = UserDetail::where('user_id', auth()->id())->first();
@@ -44,11 +45,18 @@ class FilmController extends Controller
         $title = 'Tambah Submission';
         $categories = Category::all();
 
-        return view('film.create', compact('categories', 'title'));
+        return view('film.create', compact('categories', 'title', 'activeSetting'));
     }
 
     public function store(Request $request)
     {
+        $activeSetting = SubmissionSetting::currentActive();
+
+        if (!$activeSetting) {
+            return redirect()->route('film.index')
+                ->with('warning', 'Tidak ada periode submission yang aktif.');
+        }
+
         $request->validate([
             'name'           => 'required|string|max:255',
             'duration'       => 'required|integer|min:1',
@@ -65,7 +73,6 @@ class FilmController extends Controller
             'trailer'        => 'required|url',
             'film'           => 'required|url',
             'other_1'        => 'nullable|file|max:10240',
-            'status'         => 'required',
         ], [
             'name.required'           => 'Judul film wajib diisi.',
             'duration.required'       => 'Durasi wajib diisi.',
@@ -112,7 +119,9 @@ class FilmController extends Controller
         }
 
         Film::create([
-            'user_id'        => $request->user_id,
+            'user_id'        => auth()->id(),
+            'submission_setting_id' => $activeSetting->id,
+            'category_id'    => auth()->user()->category_id,
             'name'           => $request->name,
             'duration'       => $request->duration,
             'tahun_produksi' => $request->tahun_produksi,
@@ -127,7 +136,8 @@ class FilmController extends Controller
             'trailer'        => $request->trailer,
             'film'           => $request->film,
             'other_1'        => $other1Path,
-            'status'         => $request->status,
+            'status'         => Film::CURATION_PENDING,
+            'curation_status' => Film::CURATION_PENDING,
         ]);
 
         return redirect()->route('film.index')
@@ -137,14 +147,13 @@ class FilmController extends Controller
     public function show($id)
     {
         $title = 'Detail Submission';
-        $film = Film::with(['user', 'user.detail'])->findOrFail($id);
+        $film = Film::with(['user.category', 'user.detail', 'category', 'submissionSetting', 'juryScores.jury'])->findOrFail($id);
         return view('film.show', compact('film', 'title'));
     }
 
     public function edit($id)
     {
-        // Jika admin, bisa edit semua film. Jika peserta, hanya miliknya.
-        if (auth()->user()->role == 'admin') {
+        if (in_array(auth()->user()->role, ['admin', 'adminsub'], true)) {
             $film = Film::findOrFail($id);
         } else {
             $film = Film::where('id', $id)
@@ -159,7 +168,7 @@ class FilmController extends Controller
 
     public function update(Request $request, $id)
     {
-        if (auth()->user()->role == 'admin') {
+        if (in_array(auth()->user()->role, ['admin', 'adminsub'], true)) {
             $film = Film::findOrFail($id);
         } else {
             $film = Film::where('id', $id)
@@ -183,6 +192,7 @@ class FilmController extends Controller
             'trailer'        => 'required|url',
             'film'           => 'required|url',
             'other_1'        => 'nullable|file|max:10240',
+            'category_id'    => 'nullable|exists:categories,id',
         ], [
             'name.required'           => 'Judul film wajib diisi.',
             'duration.required'       => 'Durasi wajib diisi.',
@@ -217,6 +227,7 @@ class FilmController extends Controller
             'penulis'        => $request->penulis,
             'trailer'        => $request->trailer,
             'film'           => $request->film,
+            'category_id'    => $request->category_id ?: $film->category_id ?: $film->user->category_id,
         ];
 
         // Ganti kru jika ada upload baru
@@ -261,7 +272,7 @@ class FilmController extends Controller
 
     public function destroy($id)
     {
-        if (auth()->user()->role == 'admin') {
+        if (in_array(auth()->user()->role, ['admin', 'adminsub'], true)) {
             $film = Film::findOrFail($id);
         } else {
             $film = Film::where('id', $id)

@@ -19,6 +19,9 @@ class UserFactory extends Factory
             'email' => $this->faker->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password
+            'role' => 'peserta',
+            'no_hp' => $this->faker->numerify('08##########'),
+            'category_id' => null,
             'remember_token' => Str::random(10),
         ];
     }
@@ -33,6 +36,15 @@ class UserFactory extends Factory
         return $this->state(function (array $attributes) {
             return [
                 'email_verified_at' => null,
+            ];
+        });
+    }
+
+    public function role($role)
+    {
+        return $this->state(function () use ($role) {
+            return [
+                'role' => $role,
             ];
         });
     }

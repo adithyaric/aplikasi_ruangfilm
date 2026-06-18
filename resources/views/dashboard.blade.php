@@ -295,7 +295,7 @@
                                     </div>
                                 </td>
 
-                                <td style="vertical-align:middle;">{{ $item->user->category->name ?? '-' }}</td>
+                                <td style="vertical-align:middle;">{{ $item->category->name ?? '-' }}</td>
 
                                 <td style="vertical-align:middle;">
                                     @php
@@ -314,14 +314,12 @@
                                 <td style="vertical-align:middle;">
                                     @php
                                     $statusMap = [
-                                    1 => ['label' => 'Submitted', 'color' => '#6c757d', 'bg' => '#f0f0f0'],
-                                    2 => ['label' => 'Verified', 'color' => '#0d6efd', 'bg' => '#e7f1ff'],
-                                    3 => ['label' => 'Under Review', 'color' => '#e6a800', 'bg' => '#fff8e0'],
-                                    4 => ['label' => 'Official Selection', 'color' => '#198754', 'bg' => '#e6f9ef'],
-                                    5 => ['label' => 'Not Selected', 'color' => '#dc3545', 'bg' => '#fde8e8'],
-                                    6 => ['label' => 'Winner', 'color' => '#6f42c1', 'bg' => '#f0ebff'],
+                                    'pending' => ['label' => 'Menunggu Kurasi', 'color' => '#b87f00', 'bg' => '#fff8e0'],
+                                    'approved' => ['label' => 'Lolos Kurasi', 'color' => '#198754', 'bg' => '#e6f9ef'],
+                                    'rejected' => ['label' => 'Ditolak', 'color' => '#dc3545', 'bg' => '#fde8e8'],
+                                    'winner' => ['label' => $item->winner_rank ?: 'Pemenang', 'color' => '#6f42c1', 'bg' => '#f0ebff'],
                                     ];
-                                    $s = $statusMap[$item->status] ?? ['label' => $item->status, 'color' => '#888', 'bg' => '#f5f5f5'];
+                                    $s = $statusMap[$item->display_status] ?? ['label' => $item->display_status_label, 'color' => '#888', 'bg' => '#f5f5f5'];
                                     @endphp
                                     <span style="background:{{ $s['bg'] }};color:{{ $s['color'] }};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;">
                                         {{ $s['label'] }}

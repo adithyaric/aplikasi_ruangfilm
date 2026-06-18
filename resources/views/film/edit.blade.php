@@ -26,6 +26,7 @@
                         {{-- Informasi Film --}}
                         <h5 style="font-weight:700; border-left:3px solid #1db9a0; padding-left:10px; margin:0 0 16px;">Informasi Film</h5>
 
+                        @if(in_array(auth()->user()->role, ['admin', 'adminsub']))
                         <div class="form-group">
                             <label>Kategori <span class="text-danger">*</span></label>
                             <select name="category_id" id="category_id" class="form-control" required>
@@ -38,6 +39,13 @@
                                 @endforeach
                             </select>
                         </div>
+                        @else
+                        <input type="hidden" name="category_id" value="{{ $film->category_id }}">
+                        <div class="form-group">
+                            <label>Kategori</label>
+                            <input type="text" class="form-control" value="{{ $film->category->name ?? '-' }}" readonly>
+                        </div>
+                        @endif
 
                         <div class="form-group">
                             <label>Judul Film <span class="text-danger">*</span></label>
@@ -275,22 +283,25 @@
         4: 'Surat Rekomendasi Sekolah'
     };
 
-    document.getElementById('category_id').addEventListener('change', function() {
-        const catId = parseInt(this.value);
-        const wrapper = document.getElementById('dynamic_field');
-        const label = document.getElementById('dynamic_label');
-        const input = document.getElementById('dynamic_input');
+    const categorySelect = document.getElementById('category_id');
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function() {
+            const catId = parseInt(this.value);
+            const wrapper = document.getElementById('dynamic_field');
+            const label = document.getElementById('dynamic_label');
+            const input = document.getElementById('dynamic_input');
 
-        if (categoryMap[catId]) {
-            label.innerHTML = categoryMap[catId] + ' <span class="text-danger">*</span>';
-            input.required = true;
-            wrapper.style.display = 'block';
-        } else {
-            wrapper.style.display = 'none';
-            input.required = false;
-            input.value = '';
-        }
-    });
+            if (categoryMap[catId]) {
+                label.innerHTML = categoryMap[catId] + ' <span class="text-danger">*</span>';
+                input.required = true;
+                wrapper.style.display = 'block';
+            } else {
+                wrapper.style.display = 'none';
+                input.required = false;
+                input.value = '';
+            }
+        });
+    }
 
     // ── Validasi submit ──
     document.querySelector('form').addEventListener('submit', function(e) {

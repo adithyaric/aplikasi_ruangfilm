@@ -196,6 +196,7 @@
             margin-top: 4px;
         }
     </style>
+    @stack('styles')
 </head>
 
 <body class="text-white overflow-x-hidden">
@@ -214,35 +215,41 @@
         class="sticky top-0 z-50 w-full transition-all duration-300 backdrop-blur-xl bg-[#0f0f23]/70 border-b border-purple-500/20 shadow-md">
         <div class="max-w-7xl mx-auto px-6 md:px-10 py-4 flex justify-between items-center">
             <!-- Logo -->
-            <a href="#home" class="flex items-center">
+            <a href="{{ route('landing.home') }}" class="flex items-center">
                 <img src="{{ asset('landing/images/RUANG FILM - GREEN.png') }}" alt="Festival Ruang Film Horor 2026"
                     class="h-12 md:h-14 w-auto object-contain transition duration-300 hover:scale-105" />
             </a>
             <!-- Menu kanan (Desktop) -->
             <div class="hidden md:flex items-center space-x-8 text-sm font-medium">
-                <a href="/" class="nav-link {{ request()->is('/') ? 'text-purple-300' : 'text-gray-200' }} font-semibold hover:text-purple-300 transition">Home</a>
+                <a href="/" class="nav-link {{ request()->routeIs('landing.home') ? 'text-purple-300' : 'text-gray-200' }} font-semibold hover:text-purple-300 transition">Home</a>
                 <a href="/program" class="nav-link {{ request()->is('program') ? 'text-purple-300' : 'text-gray-200' }} hover:text-purple-300 transition">Program</a>
                 <a href="/merchandise" class="nav-link {{ request()->is('merchandise') ? 'text-purple-300' : 'text-gray-200' }} hover:text-purple-300 transition">Merchandise</a>
                 {{-- Keranjang --}}
-                <a href="#" class="relative text-gray-200 hover:text-purple-300 transition" title="Keranjang belanja">
+                <a href="{{ auth()->check() ? route('cart.index') : route('login') }}" class="relative text-gray-200 hover:text-purple-300 transition" title="Keranjang belanja">
                     <i class="fas fa-shopping-cart text-lg"></i>
                     {{-- Badge jumlah item --}}
                     <span id="cart-count"
-                        class="absolute -top-2 -right-2 bg-purple-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center hidden">
-                        0
+                        class="absolute -top-2 -right-2 bg-purple-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center {{ $landingCartCount > 0 ? '' : 'hidden' }}">
+                        {{ $landingCartCount }}
                     </span>
                 </a>
+                @if(auth()->check())
+                <a href="{{ route('orders.index') }}" class="nav-link text-gray-200 hover:text-purple-300 transition">Invoice</a>
+                <a href="{{ route('dashboard') }}"
+                    class="btn-gradient px-5 py-2 rounded-full text-white text-sm font-semibold tracking-wide shadow-lg transition-all">Dashboard</a>
+                @else
                 <a href="{{ route('login') }}"
                     class="btn-gradient px-5 py-2 rounded-full text-white text-sm font-semibold tracking-wide shadow-lg transition-all">Login</a>
+                @endif
             </div>
             <!-- Mobile menu icon + dropdown sederhana (responsive) -->
             <div class="md:hidden flex items-center gap-4">
                 {{-- Keranjang mobile --}}
-                <a href="#" class="relative text-gray-200 hover:text-purple-300 transition" title="Keranjang">
+                <a href="{{ auth()->check() ? route('cart.index') : route('login') }}" class="relative text-gray-200 hover:text-purple-300 transition" title="Keranjang">
                     <i class="fas fa-shopping-cart text-lg"></i>
                     <span id="cart-count-mobile"
-                        class="absolute -top-2 -right-2 bg-purple-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center hidden">
-                        0
+                        class="absolute -top-2 -right-2 bg-purple-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center {{ $landingCartCount > 0 ? '' : 'hidden' }}">
+                        {{ $landingCartCount }}
                     </span>
                 </a>
                 <button id="mobile-menu-btn" class="text-purple-300 text-2xl focus:outline-none">
@@ -255,11 +262,37 @@
             class="md:hidden hidden flex-col bg-[#0f0f23]/90 backdrop-blur-xl border-t border-purple-500/20 px-6 pb-5 space-y-4 text-base font-medium">
             <a href="/" class="nav-link block py-2 text-gray-200 hover:text-purple-300">Home</a>
             <a href="/program" class="nav-link block py-2 text-gray-200 hover:text-purple-300">Program</a>
-            <a href="#" class="nav-link block py-2 text-gray-200 hover:text-purple-300">Merchandise</a>
+            <a href="{{ route('merchandise') }}" class="nav-link block py-2 text-gray-200 hover:text-purple-300">Merchandise</a>
+            @if(auth()->check())
+            <a href="{{ route('orders.index') }}" class="nav-link block py-2 text-gray-200 hover:text-purple-300">Invoice</a>
+            <a href="{{ route('dashboard') }}"
+                class="btn-gradient inline-block text-center px-4 py-2 rounded-full text-white font-semibold">Dashboard</a>
+            @else
             <a href="{{ route('login') }}"
                 class="btn-gradient inline-block text-center px-4 py-2 rounded-full text-white font-semibold">Login</a>
+            @endif
         </div>
     </nav>
+
+    @if(session('success') || session('warning') || session('error'))
+    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-6 relative z-20">
+        @if(session('success'))
+        <div class="rounded-2xl border border-green-500/30 bg-green-500/10 text-green-300 px-5 py-4 mb-3">
+            {{ session('success') }}
+        </div>
+        @endif
+        @if(session('warning'))
+        <div class="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 text-yellow-200 px-5 py-4 mb-3">
+            {{ session('warning') }}
+        </div>
+        @endif
+        @if(session('error'))
+        <div class="rounded-2xl border border-red-500/30 bg-red-500/10 text-red-300 px-5 py-4 mb-3">
+            {{ session('error') }}
+        </div>
+        @endif
+    </div>
+    @endif
 
     @yield('main')
     <!-- Custom JS -->
@@ -370,67 +403,58 @@
     @endphp
 
     <script>
-        @if($submissionOpen)
-        const targetClose = new Date("{{ $setting->close_at->toIso8601String() }}").getTime();
-        const timerClose = setInterval(function() {
-            const diff = targetClose - new Date().getTime();
-            if (diff <= 0) {
-                clearInterval(timerClose);
-                document.getElementById('countdown-close').innerHTML =
-                    '<p class="text-yellow-400 text-sm">Submission telah ditutup. Silakan refresh halaman.</p>';
-                return;
-            }
-            document.getElementById('cc-days').innerText = String(Math.floor(diff / 86400000)).padStart(2, '0');
-            document.getElementById('cc-hours').innerText = String(Math.floor((diff % 86400000) / 3600000)).padStart(2, '0');
-            document.getElementById('cc-minutes').innerText = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
-            document.getElementById('cc-seconds').innerText = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
-        }, 1000);
+        @if($submissionOpen && $setting)
+        const countdownClose = document.getElementById('countdown-close');
+        if (countdownClose) {
+            const targetClose = new Date("{{ $setting->close_at->toIso8601String() }}").getTime();
+            const timerClose = setInterval(function() {
+                const diff = targetClose - new Date().getTime();
+                if (diff <= 0) {
+                    clearInterval(timerClose);
+                    countdownClose.innerHTML =
+                        '<p class="text-yellow-400 text-sm">Submission telah ditutup. Silakan refresh halaman.</p>';
+                    return;
+                }
+                const days = document.getElementById('cc-days');
+                const hours = document.getElementById('cc-hours');
+                const minutes = document.getElementById('cc-minutes');
+                const seconds = document.getElementById('cc-seconds');
+                if (days && hours && minutes && seconds) {
+                    days.innerText = String(Math.floor(diff / 86400000)).padStart(2, '0');
+                    hours.innerText = String(Math.floor((diff % 86400000) / 3600000)).padStart(2, '0');
+                    minutes.innerText = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+                    seconds.innerText = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+                }
+            }, 1000);
+        }
 
-        @elseif($isBeforeOpen)
-        const targetOpen = new Date("{{ $setting->open_at->toIso8601String() }}").getTime();
-        const timerOpen = setInterval(function() {
-            const diff = targetOpen - new Date().getTime();
-            if (diff <= 0) {
-                clearInterval(timerOpen);
-                document.getElementById('countdown-open').innerHTML =
-                    '<p class="text-green-400 text-sm">Submission sudah dibuka! Silakan refresh halaman.</p>';
-                return;
-            }
-            document.getElementById('co-days').innerText = String(Math.floor(diff / 86400000)).padStart(2, '0');
-            document.getElementById('co-hours').innerText = String(Math.floor((diff % 86400000) / 3600000)).padStart(2, '0');
-            document.getElementById('co-minutes').innerText = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
-            document.getElementById('co-seconds').innerText = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
-        }, 1000);
+        @elseif($isBeforeOpen && $setting)
+        const countdownOpen = document.getElementById('countdown-open');
+        if (countdownOpen) {
+            const targetOpen = new Date("{{ $setting->open_at->toIso8601String() }}").getTime();
+            const timerOpen = setInterval(function() {
+                const diff = targetOpen - new Date().getTime();
+                if (diff <= 0) {
+                    clearInterval(timerOpen);
+                    countdownOpen.innerHTML =
+                        '<p class="text-green-400 text-sm">Submission sudah dibuka! Silakan refresh halaman.</p>';
+                    return;
+                }
+                const days = document.getElementById('co-days');
+                const hours = document.getElementById('co-hours');
+                const minutes = document.getElementById('co-minutes');
+                const seconds = document.getElementById('co-seconds');
+                if (days && hours && minutes && seconds) {
+                    days.innerText = String(Math.floor(diff / 86400000)).padStart(2, '0');
+                    hours.innerText = String(Math.floor((diff % 86400000) / 3600000)).padStart(2, '0');
+                    minutes.innerText = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+                    seconds.innerText = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+                }
+            }, 1000);
+        }
         @endif
     </script>
-    <script>
-        let cartCount = 0;
-
-        document.querySelectorAll('.btn-cart').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                cartCount++;
-
-                // Update badge desktop
-                const badge = document.getElementById('cart-count');
-                const badgeMobile = document.getElementById('cart-count-mobile');
-
-                [badge, badgeMobile].forEach(function(el) {
-                    if (el) {
-                        el.textContent = cartCount;
-                        el.classList.remove('hidden');
-                    }
-                });
-
-                // Feedback visual tombol
-                btn.innerHTML = '<i class="fas fa-check text-sm"></i>';
-                btn.classList.add('bg-purple-500/40');
-                setTimeout(function() {
-                    btn.innerHTML = '<i class="fas fa-shopping-cart text-sm"></i>';
-                    btn.classList.remove('bg-purple-500/40');
-                }, 1000);
-            });
-        });
-    </script>
+    @stack('scripts')
 </body>
 
 </html>

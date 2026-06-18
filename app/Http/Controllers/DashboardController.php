@@ -17,7 +17,7 @@ class DashboardController extends Controller
 
         if ($user->role == 'peserta') {
             return $this->dashboardPeserta();
-        } elseif ($user->role == 'admin' || $user->role == 'adminsub') {
+        } elseif (in_array($user->role, ['admin', 'adminsub', 'kurator', 'juri'], true)) {
             return $this->dashboardAdmin();
         }
 
@@ -62,20 +62,18 @@ class DashboardController extends Controller
     private function dashboardAdmin()
     {
         $title = 'Dashboard';
-        // Stat cards admin
         $categories = Category::orderBy('name')->get();
         $totalFilm         = Film::count();
-        $dalamProses       = Film::whereIn('status', [1, 2, 3])->count();
-        $officialSelection = Film::where('status', 4)->count();
-        $ditolak           = Film::where('status', 5)->count();
-        $winner            = Film::where('status', 6)->count();
+        $dalamProses       = Film::where('curation_status', Film::CURATION_PENDING)->count();
+        $officialSelection = Film::where('curation_status', Film::CURATION_APPROVED)->count();
+        $ditolak           = Film::where('curation_status', Film::CURATION_REJECTED)->count();
+        $winner            = Film::whereNotNull('winner_rank')->count();
         $totalDownload     = DownloadLog::where('file', 'ekatalog-2025.pdf')->count();
         $downloadHariIni = DownloadLog::where('file', 'ekatalog-2025.pdf')
             ->whereDate('created_at', today())
             ->count();
 
-        // Semua submission
-        $submissions = Film::with(['user'])
+        $submissions = Film::with(['user.category', 'category', 'submissionSetting'])
             ->latest()
             ->get();
 
@@ -101,41 +99,4 @@ class DashboardController extends Controller
         ));
     }
 
-    public function settingIndex()
-    {
-        $title = 'Setting Submission';
-        $setting = SubmissionSetting::current();
-        return view('setting', compact('setting', 'title'));
-    }
-
-    public function settingStore(Request $request)
-    {
-        $request->validate([
-            'open_at'  => 'required|date',
-            'close_at' => 'required|date|after:open_at',
-        ], [
-            'open_at.required'   => 'Waktu pembukaan wajib diisi.',
-            'close_at.required'  => 'Waktu penutupan wajib diisi.',
-            'close_at.after'     => 'Waktu penutupan harus setelah waktu pembukaan.',
-        ]);
-
-        SubmissionSetting::updateOrCreate(
-            ['id' => 1],
-            [
-                'open_at'  => $request->open_at,
-                'close_at' => $request->close_at,
-            ]
-        );
-
-        return redirect()->route('settingIndex')
-            ->with('success', 'Setting submission berhasil disimpan.');
-    }
-
-    public function settingDestroy()
-    {
-        SubmissionSetting::truncate();
-
-        return redirect()->route('settingIndex')
-            ->with('success', 'Setting submission berhasil dihapus.');
-    }
 }
