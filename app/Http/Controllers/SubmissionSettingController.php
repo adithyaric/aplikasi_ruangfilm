@@ -11,24 +11,30 @@ class SubmissionSettingController extends Controller
 {
     public function index()
     {
+        $currentSetting = SubmissionSetting::current();
+
         return view('setting', [
             'title' => 'Setting Submission',
-            'setting' => SubmissionSetting::current(),
+            'setting' => $currentSetting,
+            'landingSetting' => $currentSetting,
             'submissionPeriods' => SubmissionSetting::orderByDesc('open_at')->get(),
         ]);
     }
 
     public function store(Request $request)
     {
-        $validated = $this->validatePeriod($request);
+        $validated = $this->validatePeriod($request, 'periodForm');
 
         if (SubmissionSetting::overlaps($validated['open_at'], $validated['close_at'])) {
             return back()->withErrors([
                 'open_at' => 'Periode submission tidak boleh tumpang tindih dengan periode lain.',
-            ])->withInput();
+            ], 'periodForm')->withInput();
         }
 
-        SubmissionSetting::create($this->preparePayload($request, $validated));
+        SubmissionSetting::create(array_merge(
+            $this->cloneLandingPayload(SubmissionSetting::current()),
+            $validated
+        ));
 
         return redirect()->route('settingIndex')
             ->with('success', 'Periode submission berhasil disimpan.');
@@ -52,23 +58,34 @@ class SubmissionSettingController extends Controller
             ])->withInput();
         }
 
-        $oldImages = $this->collectSettingImages($submissionSetting);
-        $payload = $this->preparePayload($request, $validated, $submissionSetting);
-
-        $submissionSetting->update($payload);
-        $this->deleteUnusedImages($oldImages, $this->collectImagePathsFromPayload($payload));
+        $submissionSetting->update($validated);
 
         return redirect()->route('settingIndex')
             ->with('success', 'Periode submission berhasil diperbarui.');
     }
 
+    public function updateLanding(Request $request, SubmissionSetting $submissionSetting)
+    {
+        $validated = $this->validateLanding($request, 'landingForm');
+        $oldImages = $this->collectSettingImages($submissionSetting);
+        $payload = $this->prepareLandingPayload($request, $validated, $submissionSetting);
+
+        $submissionSetting->update($payload);
+        $this->deleteUnusedImages($oldImages, $this->collectImagePathsFromPayload($payload));
+
+        return redirect()->route('settingIndex')
+            ->with('success', 'Setting landing page berhasil diperbarui.');
+    }
+
     public function destroy(SubmissionSetting $submissionSetting)
     {
-        foreach ($this->collectSettingImages($submissionSetting) as $path) {
-            $this->deleteStoredImage($path);
-        }
+        $images = $this->collectSettingImages($submissionSetting);
 
         $submissionSetting->delete();
+
+        foreach ($images as $path) {
+            $this->deleteStoredImage($path);
+        }
 
         return back()->with('success', 'Periode submission berhasil dihapus.');
     }
@@ -84,10 +101,26 @@ class SubmissionSettingController extends Controller
         return back()->with('success', 'Setting pembayaran berhasil diperbarui.');
     }
 
-    protected function validatePeriod(Request $request)
+    protected function validatePeriod(Request $request, $bag = null)
     {
-        return $request->validate([
+        $rules = [
             'name' => 'required|string|max:255',
+            'open_at' => 'required|date',
+            'close_at' => 'required|date|after:open_at',
+        ];
+
+        $messages = [
+            'close_at.after' => 'Waktu penutupan harus setelah waktu pembukaan.',
+        ];
+
+        return $bag
+            ? $request->validateWithBag($bag, $rules, $messages)
+            : $request->validate($rules, $messages);
+    }
+
+    protected function validateLanding(Request $request, $bag = null)
+    {
+        $rules = [
             'hero_title' => 'nullable|string|max:255',
             'hero_description' => 'nullable|string',
             'hero_image' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
@@ -109,14 +142,14 @@ class SubmissionSettingController extends Controller
             'last_year_description' => 'nullable|string',
             'last_year_catalog_label' => 'nullable|string|max:255',
             'last_year_catalog_url' => 'nullable|string|max:255',
-            'open_at' => 'required|date',
-            'close_at' => 'required|date|after:open_at',
-        ], [
-            'close_at.after' => 'Waktu penutupan harus setelah waktu pembukaan.',
-        ]);
+        ];
+
+        return $bag
+            ? $request->validateWithBag($bag, $rules)
+            : $request->validate($rules);
     }
 
-    protected function preparePayload(Request $request, array $validated, SubmissionSetting $submissionSetting = null)
+    protected function prepareLandingPayload(Request $request, array $validated, SubmissionSetting $submissionSetting = null)
     {
         $payload = $validated;
 
@@ -133,16 +166,55 @@ class SubmissionSettingController extends Controller
         return $payload;
     }
 
+    protected function cloneLandingPayload(SubmissionSetting $submissionSetting = null)
+    {
+        $payload = [];
+
+        foreach ($this->landingFields() as $field) {
+            if ($field === 'festival_board') {
+                $payload[$field] = $submissionSetting ? ($submissionSetting->festival_board ?: []) : [];
+                continue;
+            }
+
+            $payload[$field] = optional($submissionSetting)->{$field};
+        }
+
+        return $payload;
+    }
+
+    protected function landingFields()
+    {
+        return [
+            'hero_title',
+            'hero_description',
+            'hero_image',
+            'about_title',
+            'about_description',
+            'about_description_secondary',
+            'about_image',
+            'hashtag',
+            'theme_title',
+            'theme_name',
+            'theme_quote',
+            'theme_description',
+            'theme_image',
+            'festival_board',
+            'last_year_title',
+            'last_year_description',
+            'last_year_catalog_label',
+            'last_year_catalog_url',
+        ];
+    }
+
     protected function buildBoardMembers(Request $request, SubmissionSetting $submissionSetting = null)
     {
-        $existingMembers = collect(optional($submissionSetting)->festival_board ?: [])->values();
-        $inputMembers = collect($request->input('festival_board', []))->values();
+        $existingMembers = collect(optional($submissionSetting)->festival_board ?: []);
+        $inputMembers = collect($request->input('festival_board', []));
         $uploadedImages = $request->file('festival_board_images', []);
 
         $members = [];
 
-        foreach (range(0, max(2, $inputMembers->count() - 1)) as $index) {
-            $currentMember = $inputMembers->get($index, []);
+        foreach ($inputMembers as $index => $currentMember) {
             $name = trim((string) ($currentMember['name'] ?? ''));
             $title = trim((string) ($currentMember['title'] ?? ''));
             $image = data_get($existingMembers->get($index), 'image');
@@ -160,7 +232,7 @@ class SubmissionSettingController extends Controller
             }
         }
 
-        return $members;
+        return array_values($members);
     }
 
     protected function storeOrKeepImage(Request $request, $field, $existingPath = null)
@@ -211,8 +283,24 @@ class SubmissionSettingController extends Controller
 
     protected function deleteStoredImage($path)
     {
-        if ($path && !preg_match('/^(https?:\/\/|landing\/|img\/|assets\/)/', $path)) {
+        if (
+            $path
+            && !preg_match('/^(https?:\/\/|landing\/|img\/|assets\/)/', $path)
+            && !$this->isSubmissionImageStillUsed($path)
+        ) {
             Storage::disk('public')->delete($path);
         }
+    }
+
+    protected function isSubmissionImageStillUsed($path)
+    {
+        return SubmissionSetting::query()
+            ->where(function ($query) use ($path) {
+                $query->where('hero_image', $path)
+                    ->orWhere('about_image', $path)
+                    ->orWhere('theme_image', $path)
+                    ->orWhere('festival_board', 'like', '%' . $path . '%');
+            })
+            ->exists();
     }
 }

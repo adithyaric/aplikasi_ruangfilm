@@ -78,14 +78,16 @@ Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('aut
 Route::get('/setting/submission', [SubmissionSettingController::class, 'index'])->middleware(['auth', 'role:admin'])->name('settingIndex');
 Route::post('/setting/submission', [SubmissionSettingController::class, 'store'])->middleware(['auth', 'role:admin'])->name('settingStore');
 Route::put('/setting/submission/{submissionSetting}', [SubmissionSettingController::class, 'update'])->middleware(['auth', 'role:admin'])->name('settingUpdate');
+Route::put('/setting/submission/{submissionSetting}/landing', [SubmissionSettingController::class, 'updateLanding'])->middleware(['auth', 'role:admin'])->name('settingLandingUpdate');
 Route::get('/setting/submission/{submissionSetting}/edit', [SubmissionSettingController::class, 'edit'])->middleware(['auth', 'role:admin'])->name('settingEdit');
 Route::delete('/setting/submission/{submissionSetting}', [SubmissionSettingController::class, 'destroy'])->middleware(['auth', 'role:admin'])->name('settingDestroy');
 Route::post('/setting/general', [SubmissionSettingController::class, 'updateGeneral'])->middleware(['auth', 'role:admin'])->name('settingGeneralUpdate');
 
 // User
 Route::resource('/users', UserController::class)->middleware('auth');
-Route::get('/users/index/author', [UserController::class, 'indexAuth'])->name('users.index.author');
-Route::get('/users/index/kurator', [UserController::class, 'indexKur'])->name('users.index.kurator');
+Route::get('/users/index/author', [UserController::class, 'indexAuth'])->middleware('auth')->name('users.index.author');
+Route::get('/users/index/author/create', [UserController::class, 'createAuthor'])->middleware('auth')->name('users.create.author');
+Route::get('/users/index/kurator', [UserController::class, 'indexKur'])->middleware('auth')->name('users.index.kurator');
 Route::get('/changepass', [UserController::class, 'changePass'])->name('user.changepass');
 Route::post('/updatepass', [UserController::class, 'updatePassword'])->name('user.changepass.update');
 

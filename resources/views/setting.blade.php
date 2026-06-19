@@ -46,23 +46,22 @@
                 </div>
 
                 <div class="box-body">
-                    @if ($errors->any())
-                    <div class="alert alert-danger">
-                        <ul class="mb-0">
-                            @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                    @endif
-
                     <div class="row">
                         <div class="col-md-8">
                             <div style="border:1px solid #eee; border-radius:10px; padding:16px; margin-bottom:18px;">
                                 <h4 style="margin-top:0;"><b>Tambah Periode Submission</b></h4>
                                 <form action="{{ route('settingStore') }}" method="POST" enctype="multipart/form-data">
                                     @csrf
-                                    @include('submission-setting.partials.form-fields', ['submissionSettingForm' => null])
+                                    @if($errors->periodForm->any())
+                                    <div class="alert alert-danger">
+                                        <ul class="mb-0">
+                                            @foreach ($errors->periodForm->all() as $error)
+                                            <li>{{ $error }}</li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                    @endif
+                                    @include('submission-setting.partials.period-fields', ['submissionSettingForm' => null])
                                     <button type="submit" class="btn btn-primary">Simpan Periode</button>
                                 </form>
                             </div>
@@ -73,6 +72,15 @@
                                 <h4 style="margin-top:0;"><b>Setting Batas Waktu Pembayaran</b></h4>
                                 <form action="{{ route('settingGeneralUpdate') }}" method="POST">
                                     @csrf
+                                    @if($errors->getBag('default')->any())
+                                    <div class="alert alert-danger">
+                                        <ul class="mb-0">
+                                            @foreach ($errors->getBag('default')->all() as $error)
+                                            <li>{{ $error }}</li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                    @endif
                                     <div class="form-group">
                                         <label>Batas Waktu Pembayaran (jam)</label>
                                         <input type="number" name="payment_due_hours" class="form-control"
@@ -84,6 +92,51 @@
                                 </form>
                             </div>
                         </div>
+                    </div>
+
+                    <div style="border:1px solid #eee; border-radius:10px; padding:16px; margin-bottom:18px;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+                            <div>
+                                <h4 style="margin:0 0 6px;"><b>Setting Landing Page</b></h4>
+                                @if($landingSetting)
+                                <p class="text-muted" style="margin:0;">
+                                    Menampilkan data untuk periode <strong>{{ $landingSetting->name }}</strong>.
+                                </p>
+                                @else
+                                <p class="text-muted" style="margin:0;">
+                                    Buat periode submission terlebih dahulu untuk mulai mengatur landing page.
+                                </p>
+                                @endif
+                            </div>
+                            @if($landingSetting)
+                            <span class="label label-primary" style="font-size:12px; padding:8px 10px;">
+                                {{ $landingSetting->open_at->translatedFormat('d M Y H:i') }} - {{ $landingSetting->close_at->translatedFormat('d M Y H:i') }} WIB
+                            </span>
+                            @endif
+                        </div>
+
+                        @if(!$landingSetting)
+                        <div class="alert alert-warning" style="margin-top:16px; margin-bottom:0;">
+                            <i class="fa fa-exclamation-triangle"></i>
+                            Landing page belum punya data periode untuk ditampilkan.
+                        </div>
+                        @else
+                        <form action="{{ route('settingLandingUpdate', $landingSetting) }}" method="POST" enctype="multipart/form-data" style="margin-top:16px;">
+                            @csrf
+                            @method('PUT')
+                            @if($errors->landingForm->any())
+                            <div class="alert alert-danger">
+                                <ul class="mb-0">
+                                    @foreach ($errors->landingForm->all() as $error)
+                                    <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                            @endif
+                            @include('submission-setting.partials.landing-fields', ['submissionSettingForm' => $landingSetting])
+                            <button type="submit" class="btn btn-success">Simpan Setting Landing Page</button>
+                        </form>
+                        @endif
                     </div>
 
                     <div style="border-top:1px solid #f0f0f0; padding-top:18px;">
@@ -152,3 +205,39 @@
     </div>
 </section>
 @endsection
+
+@push('scripts')
+<script>
+    (function() {
+        const boardList = document.getElementById('festival-board-list');
+        const addButton = document.getElementById('add-board-member');
+        const template = document.getElementById('festival-board-template');
+
+        if (!boardList || !addButton || !template) {
+            return;
+        }
+
+        let nextIndex = boardList.querySelectorAll('[data-board-member]').length;
+
+        addButton.addEventListener('click', function() {
+            const markup = template.innerHTML.replace(/__INDEX__/g, nextIndex);
+            boardList.insertAdjacentHTML('beforeend', markup);
+            nextIndex += 1;
+        });
+
+        boardList.addEventListener('click', function(event) {
+            const removeButton = event.target.closest('[data-remove-board-member]');
+
+            if (!removeButton) {
+                return;
+            }
+
+            const card = removeButton.closest('[data-board-member]');
+
+            if (card) {
+                card.remove();
+            }
+        });
+    })();
+</script>
+@endpush

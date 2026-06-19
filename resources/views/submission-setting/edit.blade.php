@@ -11,6 +11,10 @@
                     @csrf
                     @method('PUT')
                     <div class="box-body">
+                        <div class="alert alert-info">
+                            <i class="fa fa-info-circle"></i>
+                            Konten landing page sekarang dikelola terpisah dari halaman setting submission utama.
+                        </div>
                         @if ($errors->any())
                         <div class="alert alert-danger">
                             <ul class="mb-0">
@@ -20,11 +24,11 @@
                             </ul>
                         </div>
                         @endif
-                        @include('submission-setting.partials.form-fields', ['submissionSettingForm' => $submissionSetting])
+                        @include('submission-setting.partials.period-fields', ['submissionSettingForm' => $submissionSetting])
                     </div>
                     <div class="box-footer">
                         <a href="{{ route('settingIndex') }}" class="btn btn-default">Kembali</a>
-                        <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                        <button type="submit" class="btn btn-primary">Simpan Periode</button>
                     </div>
                 </form>
             </div>

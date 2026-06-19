@@ -33,6 +33,13 @@ class UserController extends Controller
         ]);
     }
 
+    public function createAuthor()
+    {
+        return view('user.create-author', [
+            'title' => 'Tambah Data Peserta',
+        ]);
+    }
+
     /**
      * Store a newly created resource in storage.
      *
@@ -45,11 +52,21 @@ class UserController extends Controller
             'name' => 'required',
             'email' => 'required|email|unique:users',
             'password' => 'required',
-            'role' => 'required'
+            'role' => 'required',
+            'no_hp' => $request->role === 'peserta' ? 'required|string|max:20' : 'nullable|string|max:20',
         ]);
 
         $validatedData['password'] = Hash::make($validatedData['password']);
         User::create($validatedData);
+
+        if ($validatedData['role'] === 'peserta') {
+            return redirect(route('users.index.author'))->with('toast_success', 'Berhasil Menyimpan Data!');
+        }
+
+        if (in_array($validatedData['role'], ['kurator', 'juri'])) {
+            return redirect(route('users.index.kurator'))->with('toast_success', 'Berhasil Menyimpan Data!');
+        }
+
         return redirect(route('users.index'))->with('toast_success', 'Berhasil Menyimpan Data!');
     }
 

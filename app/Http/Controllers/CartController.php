@@ -74,7 +74,7 @@ class CartController extends Controller
         $merchandise = $cartItem->merchandise;
 
         if (!$merchandise || $request->quantity > $merchandise->qty_stock) {
-            return back()->with('warning', 'Jumlah melebihi stok yang tersedia.');
+            return $this->cartErrorResponse($request, 'Jumlah melebihi stok yang tersedia.');
         }
 
         $cartItem->update([
@@ -82,14 +82,35 @@ class CartController extends Controller
             'unit_price' => $merchandise->currentPrice(),
         ]);
 
+        if ($request->expectsJson()) {
+            $cartItem->refresh();
+
+            return $this->cartJsonResponse(
+                $cartItem->cart->fresh()->load('items'),
+                'Keranjang berhasil diperbarui.',
+                $cartItem
+            );
+        }
+
         return back()->with('success', 'Keranjang berhasil diperbarui.');
     }
 
-    public function destroy(CartItem $cartItem)
+    public function destroy(Request $request, CartItem $cartItem)
     {
         $this->authorizeCartItem($cartItem);
 
+        $cart = $cartItem->cart;
+        $deletedItemId = $cartItem->id;
         $cartItem->delete();
+
+        if ($request->expectsJson()) {
+            return $this->cartJsonResponse(
+                $cart->fresh()->load('items'),
+                'Item keranjang berhasil dihapus.',
+                null,
+                ['deleted_item_id' => $deletedItemId]
+            );
+        }
 
         return back()->with('success', 'Item keranjang berhasil dihapus.');
     }
@@ -97,5 +118,38 @@ class CartController extends Controller
     protected function authorizeCartItem(CartItem $cartItem)
     {
         abort_unless($cartItem->cart && $cartItem->cart->user_id === auth()->id(), 403);
+    }
+
+    protected function cartErrorResponse(Request $request, $message, $status = 422)
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+            ], $status);
+        }
+
+        return back()->with('warning', $message);
+    }
+
+    protected function cartJsonResponse(Cart $cart, $message, CartItem $cartItem = null, array $extra = [])
+    {
+        $cart->loadMissing('items');
+        $totalQuantity = $cart->totalQuantity();
+
+        $payload = array_merge([
+            'message' => $message,
+            'cart_total_quantity' => $totalQuantity,
+            'cart_count_display' => $totalQuantity > 99 ? '99+' : (string) $totalQuantity,
+            'cart_subtotal_formatted' => number_format($cart->subtotal(), 0, ',', '.'),
+            'empty' => $cart->items->isEmpty(),
+        ], $extra);
+
+        if ($cartItem) {
+            $payload['item_id'] = $cartItem->id;
+            $payload['item_quantity'] = $cartItem->quantity;
+            $payload['item_subtotal_formatted'] = number_format($cartItem->subtotal(), 0, ',', '.');
+        }
+
+        return response()->json($payload);
     }
 }
