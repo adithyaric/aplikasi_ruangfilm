@@ -32,9 +32,7 @@ use Laravolt\Indonesia\Models\Province;
 
 // Landing
 Route::get('/', [LandingController::class, 'home'])->name('landing.home');
-Route::get('/program', function () {
-    return view('landing.program');
-});
+Route::get('/program', [LandingController::class, 'program'])->name('landing.program');
 Route::get('/umum', function () {
     return view('landing.kategori.umum');
 });

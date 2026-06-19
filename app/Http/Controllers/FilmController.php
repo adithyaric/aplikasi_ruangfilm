@@ -15,7 +15,7 @@ class FilmController extends Controller
     public function index()
     {
         $title = 'Submission';
-        $categories = Category::orderBy('name')->get();
+        $categories = Category::orderBy('sort_order')->orderBy('name')->get();
 
         if (in_array(auth()->user()->role, ['admin', 'adminsub'], true)) {
             $films = Film::with(['user.category', 'category', 'submissionSetting'])->latest()->get();
@@ -43,7 +43,7 @@ class FilmController extends Controller
         }
 
         $title = 'Tambah Submission';
-        $categories = Category::all();
+        $categories = Category::orderBy('sort_order')->orderBy('name')->get();
 
         return view('film.create', compact('categories', 'title', 'activeSetting'));
     }
@@ -162,7 +162,7 @@ class FilmController extends Controller
         }
 
         $title = 'Edit Submission';
-        $categories = \App\Models\Category::all();
+        $categories = \App\Models\Category::orderBy('sort_order')->orderBy('name')->get();
         return view('film.edit', compact('film', 'categories', 'title'));
     }
 

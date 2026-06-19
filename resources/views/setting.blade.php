@@ -57,33 +57,18 @@
                     @endif
 
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-8">
                             <div style="border:1px solid #eee; border-radius:10px; padding:16px; margin-bottom:18px;">
                                 <h4 style="margin-top:0;"><b>Tambah Periode Submission</b></h4>
-                                <form action="{{ route('settingStore') }}" method="POST">
+                                <form action="{{ route('settingStore') }}" method="POST" enctype="multipart/form-data">
                                     @csrf
-                                    <div class="form-group">
-                                        <label>Nama Periode</label>
-                                        <input type="text" name="name" class="form-control"
-                                            value="{{ old('name') }}"
-                                            placeholder="Contoh: Submission Juli 2026" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Waktu Buka</label>
-                                        <input type="datetime-local" name="open_at" class="form-control"
-                                            value="{{ old('open_at') }}" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Waktu Tutup</label>
-                                        <input type="datetime-local" name="close_at" class="form-control"
-                                            value="{{ old('close_at') }}" required>
-                                    </div>
+                                    @include('submission-setting.partials.form-fields', ['submissionSettingForm' => null])
                                     <button type="submit" class="btn btn-primary">Simpan Periode</button>
                                 </form>
                             </div>
                         </div>
 
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div style="border:1px solid #eee; border-radius:10px; padding:16px; margin-bottom:18px;">
                                 <h4 style="margin-top:0;"><b>Setting Batas Waktu Pembayaran</b></h4>
                                 <form action="{{ route('settingGeneralUpdate') }}" method="POST">
@@ -111,6 +96,7 @@
                                         <th>Nama Periode</th>
                                         <th>Waktu Buka</th>
                                         <th>Waktu Tutup</th>
+                                        <th>Konten Landing</th>
                                         <th>Status</th>
                                         <th>Aksi</th>
                                     </tr>
@@ -129,6 +115,13 @@
                                         <td>{{ $period->name }}</td>
                                         <td>{{ $period->open_at->translatedFormat('d M Y H:i') }} WIB</td>
                                         <td>{{ $period->close_at->translatedFormat('d M Y H:i') }} WIB</td>
+                                        <td>
+                                            <small>
+                                                Hero: {{ $period->hero_title ? 'Siap' : 'Fallback' }}<br>
+                                                Board: {{ count($period->festival_board ?? []) }} orang<br>
+                                                Tema: {{ $period->theme_name ?: '-' }}
+                                            </small>
+                                        </td>
                                         <td><span class="label {{ $status['class'] }}">{{ $status['label'] }}</span></td>
                                         <td>
                                             <a href="{{ route('settingEdit', $period) }}" class="btn btn-warning btn-xs">Edit</a>
@@ -142,7 +135,7 @@
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="6" class="text-center text-muted">Belum ada periode submission.</td>
+                                        <td colspan="7" class="text-center text-muted">Belum ada periode submission.</td>
                                     </tr>
                                     @endforelse
                                 </tbody>

@@ -20,7 +20,13 @@ class AuthController extends Controller
 
     public function register()
     {
-        $categories = Category::all();
+        $categories = Category::query()
+            ->where(function ($query) {
+                $query->whereNull('is_active')->orWhere('is_active', true);
+            })
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
 
         if (!SubmissionSetting::isOpen()) {
             return redirect()->back()->with('warning', 'Submission Telah Ditutup');

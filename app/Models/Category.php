@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Category extends Model
 {
@@ -11,8 +12,44 @@ class Category extends Model
 
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
     public function films()
     {
         return $this->hasMany(Film::class);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function getResolvedSummaryAttribute()
+    {
+        return $this->landing_summary ?: $this->description ?: 'Kategori kompetisi film Festival Film Horor.';
+    }
+
+    public function getResolvedDetailRouteAttribute()
+    {
+        return $this->detail_route ?: '#';
+    }
+
+    public function getImageUrlAttribute()
+    {
+        if (!$this->image) {
+            return asset('landing/images/user.png');
+        }
+
+        if (Str::startsWith($this->image, ['http://', 'https://'])) {
+            return $this->image;
+        }
+
+        if (Str::startsWith($this->image, ['landing/', 'img/', 'assets/'])) {
+            return asset($this->image);
+        }
+
+        return asset('storage/' . ltrim($this->image, '/'));
     }
 }

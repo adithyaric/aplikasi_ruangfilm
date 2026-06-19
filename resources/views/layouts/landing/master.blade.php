@@ -200,6 +200,9 @@
 </head>
 
 <body class="text-white overflow-x-hidden">
+    @php
+        $cartBadgeCount = $landingCartCount > 99 ? '99+' : $landingCartCount;
+    @endphp
     <!-- ================================================== -->
     <!-- BACKGROUBD BG -->
     <!-- ================================================== -->
@@ -225,12 +228,11 @@
                 <a href="/program" class="nav-link {{ request()->is('program') ? 'text-purple-300' : 'text-gray-200' }} hover:text-purple-300 transition">Program</a>
                 <a href="/merchandise" class="nav-link {{ request()->is('merchandise') ? 'text-purple-300' : 'text-gray-200' }} hover:text-purple-300 transition">Merchandise</a>
                 {{-- Keranjang --}}
-                <a href="{{ auth()->check() ? route('cart.index') : route('login') }}" class="relative text-gray-200 hover:text-purple-300 transition" title="Keranjang belanja">
+                <a href="{{ auth()->check() ? route('cart.index') : route('login') }}" class="relative inline-flex text-gray-200 hover:text-purple-300 transition" title="Keranjang belanja">
                     <i class="fas fa-shopping-cart text-lg"></i>
-                    {{-- Badge jumlah item --}}
                     <span id="cart-count"
-                        class="absolute -top-2 -right-2 bg-purple-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center {{ $landingCartCount > 0 ? '' : 'hidden' }}">
-                        {{ $landingCartCount }}
+                        class="absolute -top-2.5 -right-3 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] leading-none font-bold rounded-full flex items-center justify-center shadow-[0_0_0_2px_rgba(15,15,35,0.95)] {{ $landingCartCount > 0 ? '' : 'hidden' }}">
+                        {{ $cartBadgeCount }}
                     </span>
                 </a>
                 @if(auth()->check())
@@ -245,11 +247,11 @@
             <!-- Mobile menu icon + dropdown sederhana (responsive) -->
             <div class="md:hidden flex items-center gap-4">
                 {{-- Keranjang mobile --}}
-                <a href="{{ auth()->check() ? route('cart.index') : route('login') }}" class="relative text-gray-200 hover:text-purple-300 transition" title="Keranjang">
+                <a href="{{ auth()->check() ? route('cart.index') : route('login') }}" class="relative inline-flex text-gray-200 hover:text-purple-300 transition" title="Keranjang">
                     <i class="fas fa-shopping-cart text-lg"></i>
                     <span id="cart-count-mobile"
-                        class="absolute -top-2 -right-2 bg-purple-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center {{ $landingCartCount > 0 ? '' : 'hidden' }}">
-                        {{ $landingCartCount }}
+                        class="absolute -top-2.5 -right-3 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] leading-none font-bold rounded-full flex items-center justify-center shadow-[0_0_0_2px_rgba(15,15,35,0.95)] {{ $landingCartCount > 0 ? '' : 'hidden' }}">
+                        {{ $cartBadgeCount }}
                     </span>
                 </a>
                 <button id="mobile-menu-btn" class="text-purple-300 text-2xl focus:outline-none">

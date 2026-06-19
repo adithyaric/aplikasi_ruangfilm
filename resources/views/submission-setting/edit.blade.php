@@ -7,7 +7,7 @@
                 <div class="box-header with-border">
                     <h3 class="box-title"><b>Edit Periode Submission</b></h3>
                 </div>
-                <form action="{{ route('settingUpdate', $submissionSetting) }}" method="POST">
+                <form action="{{ route('settingUpdate', $submissionSetting) }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
                     <div class="box-body">
@@ -20,21 +20,7 @@
                             </ul>
                         </div>
                         @endif
-                        <div class="form-group">
-                            <label>Nama Periode</label>
-                            <input type="text" name="name" class="form-control"
-                                value="{{ old('name', $submissionSetting->name) }}" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Waktu Buka</label>
-                            <input type="datetime-local" name="open_at" class="form-control"
-                                value="{{ old('open_at', $submissionSetting->open_at->format('Y-m-d\TH:i')) }}" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Waktu Tutup</label>
-                            <input type="datetime-local" name="close_at" class="form-control"
-                                value="{{ old('close_at', $submissionSetting->close_at->format('Y-m-d\TH:i')) }}" required>
-                        </div>
+                        @include('submission-setting.partials.form-fields', ['submissionSettingForm' => $submissionSetting])
                     </div>
                     <div class="box-footer">
                         <a href="{{ route('settingIndex') }}" class="btn btn-default">Kembali</a>

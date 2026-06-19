@@ -3,7 +3,7 @@
     <!-- Content Header (Page header) -->
     <section class="content-header">
         <h1>
-            Data Kategori Buku
+            Data Kategori Film
         </h1>
     </section>
 
@@ -21,6 +21,10 @@
                                 <tr>
                                     <td>No</td>
                                     <td>Nama Kategori</td>
+                                    <td>Slug</td>
+                                    <td>Route Detail</td>
+                                    <td>Urutan</td>
+                                    <td>Status</td>
                                     <td>Aksi</td>
                                 </tr>
                             </thead>
@@ -28,6 +32,14 @@
                                 <tr>
                                     <td>{{ $loop->iteration }}</td>
                                     <td>{{ $key->name }}</td>
+                                    <td>{{ $key->slug ?: '-' }}</td>
+                                    <td>{{ $key->detail_route ?: '-' }}</td>
+                                    <td>{{ $key->sort_order ?? 0 }}</td>
+                                    <td>
+                                        <span class="label {{ ($key->is_active ?? true) ? 'label-success' : 'label-default' }}">
+                                            {{ ($key->is_active ?? true) ? 'Aktif' : 'Nonaktif' }}
+                                        </span>
+                                    </td>
                                     <td>
                                         {{-- <a class="btn btn-info" href="{{ route('users.show', $key->id) }}">Show</a> --}}
                                         <a class="btn btn-warning" href="{{ route('categories.edit', $key->id) }}">Edit</a>

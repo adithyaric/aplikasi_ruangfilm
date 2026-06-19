@@ -3,7 +3,7 @@
 namespace App\Providers;
 
 use App\Models\AppSetting;
-use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\SubmissionSetting;
 use App\Models\User;
 use Throwable;
@@ -34,6 +34,20 @@ class AppServiceProvider extends ServiceProvider
             return "Rp. <?php echo number_format($expression,0,',','.'); ?>";
         });
 
+        view()->composer('*', function ($view) {
+            static $sharedData = [];
+            $cacheKey = auth()->id() ?: 'guest';
+
+            if (!array_key_exists($cacheKey, $sharedData)) {
+                $sharedData[$cacheKey] = $this->resolveSharedViewData();
+            }
+
+            $view->with($sharedData[$cacheKey]);
+        });
+    }
+
+    protected function resolveSharedViewData()
+    {
         $setting = null;
         $submissionOpen = false;
         $isBeforeOpen = false;
@@ -56,21 +70,25 @@ class AppServiceProvider extends ServiceProvider
                 $paymentDueHours = AppSetting::paymentDueHours();
             }
 
-            if (auth()->check() && Schema::hasTable('carts') && Schema::hasTable('cart_items')) {
-                $landingCartCount = optional(
-                    Cart::with('items')->where('user_id', auth()->id())->first()
-                )->totalQuantity() ?: 0;
+            if (auth()->id() && Schema::hasTable('carts') && Schema::hasTable('cart_items')) {
+                $landingCartCount = (int) CartItem::query()
+                    ->whereHas('cart', function ($query) {
+                        $query->where('user_id', auth()->id());
+                    })
+                    ->sum('quantity');
             }
         } catch (Throwable $exception) {
             // Allow console commands and tests to boot even when the database
             // connection is not available yet.
         }
 
-        view()->share('setting', $setting);
-        view()->share('submissionOpen', $submissionOpen);
-        view()->share('isBeforeOpen', $isBeforeOpen);
-        view()->share('jumlahPeserta', $jumlahPeserta);
-        view()->share('paymentDueHours', $paymentDueHours);
-        view()->share('landingCartCount', $landingCartCount);
+        return [
+            'setting' => $setting,
+            'submissionOpen' => $submissionOpen,
+            'isBeforeOpen' => $isBeforeOpen,
+            'jumlahPeserta' => $jumlahPeserta,
+            'paymentDueHours' => $paymentDueHours,
+            'landingCartCount' => $landingCartCount,
+        ];
     }
 }
