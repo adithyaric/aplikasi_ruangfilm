@@ -297,6 +297,7 @@
     @endif
 
     @yield('main')
+    @include('layouts.landing.footer')
     <!-- Custom JS -->
     <script src="{{ asset('landing/js/script.js') }}"></script>
     <!-- Vanilla JavaScript: Smooth Scroll, Mobile Menu, Intersection Observer (fade-up) -->

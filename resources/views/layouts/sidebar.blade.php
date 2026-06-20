@@ -28,7 +28,7 @@
                 <a href="{{ route('merchandise-categories.index') }}"><i class="fa fa-tags"></i> <span>Kategori Merchandise</span></a>
             </li>
             <li class="{{ request()->routeIs('admin-merchandises.*') ? 'active' : '' }}">
-                <a href="{{ route('admin-merchandises.index') }}"><i class="fa fa-shopping-bag"></i> <span>Merchandise</span></a>
+                <a href="{{ route('admin-merchandises.index') }}"><i class="fa fa-dropbox"></i> <span>Merchandise</span></a>
             </li>
             <li class="{{ request()->routeIs('expeditions.*') ? 'active' : '' }}">
                 <a href="{{ route('expeditions.index') }}"><i class="fa fa-truck"></i> <span>Expedisi</span></a>
