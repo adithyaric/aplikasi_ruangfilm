@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Category;
 use App\Models\Film;
 use App\Models\Merchandise;
 use App\Models\MerchandiseCategory;
@@ -69,42 +68,21 @@ class LandingController extends Controller
     protected function buildLandingData()
     {
         $setting = SubmissionSetting::current();
-        $completedPeriod = SubmissionSetting::where('close_at', '<', now())
-            ->orderByDesc('close_at')
-            ->first();
-
-        $competitionCategories = Category::query()
-            ->where(function ($query) {
-                $query->whereNull('is_active')->orWhere('is_active', true);
-            })
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get();
+        $completedPeriod = $this->completedPeriod();
+        $competitionCategories = $this->buildCompetitionCategories();
 
         $juryMembers = User::with('category')
             ->where('role', 'juri')
             ->orderBy('name')
             ->get();
 
-        $lastYearFilms = collect();
+        $fallbackLastYearFilms = $this->fallbackLastYearFilms($completedPeriod);
+        $lastYearFilms = $this->buildFeaturedLastYearFilms($setting, $fallbackLastYearFilms);
         $winnerGroups = collect();
-        $festivalStats = collect([
-            ['label' => 'Film Submitted', 'value' => 0, 'suffix' => ''],
-            ['label' => 'Official Selection', 'value' => 0, 'suffix' => ''],
-            ['label' => 'Peserta/Kelompok', 'value' => 0, 'suffix' => ''],
-            ['label' => 'Kategori Pemenang', 'value' => 0, 'suffix' => ''],
-        ]);
+        $derivedStats = $this->derivedLastYearStats($completedPeriod);
+        $festivalStats = $this->buildFestivalStats($setting, $derivedStats);
 
         if ($completedPeriod) {
-            $lastYearFilms = Film::with(['category', 'user.detail'])
-                ->where('submission_setting_id', $completedPeriod->id)
-                ->whereNotNull('poster')
-                ->orderByRaw("CASE WHEN winner_rank IS NULL THEN 1 ELSE 0 END")
-                ->orderBy('winner_rank')
-                ->latest()
-                ->take(6)
-                ->get();
-
             $winnerFilms = Film::with(['category', 'user.detail'])
                 ->where('submission_setting_id', $completedPeriod->id)
                 ->whereNotNull('winner_rank')
@@ -118,47 +96,14 @@ class LandingController extends Controller
                     return optional($film->category)->name ?: 'Kategori Lainnya';
                 });
 
-            $winnerGroups = $competitionCategories
-                ->map(function ($category) use ($winnerFilms) {
+            $winnerGroups = $winnerFilms
+                ->map(function ($films, $categoryName) {
                     return [
-                        'category' => $category,
-                        'films' => $winnerFilms->get($category->name, collect())->take(3)->values(),
+                        'category' => (object) ['name' => $categoryName],
+                        'films' => $films->take(3)->values(),
                     ];
                 })
-                ->filter(function ($group) {
-                    return $group['films']->isNotEmpty();
-                })
                 ->values();
-
-            $festivalStats = collect([
-                [
-                    'label' => 'Film Submitted',
-                    'value' => Film::where('submission_setting_id', $completedPeriod->id)->count(),
-                    'suffix' => '',
-                ],
-                [
-                    'label' => 'Official Selection',
-                    'value' => Film::where('submission_setting_id', $completedPeriod->id)
-                        ->whereIn('curation_status', [Film::CURATION_APPROVED, Film::CURATION_REJECTED])
-                        ->count(),
-                    'suffix' => '',
-                ],
-                [
-                    'label' => 'Peserta/Kelompok',
-                    'value' => Film::where('submission_setting_id', $completedPeriod->id)
-                        ->distinct()
-                        ->count('user_id'),
-                    'suffix' => '',
-                ],
-                [
-                    'label' => 'Kategori Pemenang',
-                    'value' => Film::where('submission_setting_id', $completedPeriod->id)
-                        ->whereNotNull('winner_rank')
-                        ->distinct()
-                        ->count('category_id'),
-                    'suffix' => '',
-                ],
-            ]);
         }
 
         return [
@@ -173,6 +118,7 @@ class LandingController extends Controller
             'lastYearFilms' => $lastYearFilms,
             'winnerGroups' => $winnerGroups,
             'festivalStats' => $festivalStats,
+            'specialFeatureStatValue' => $setting ? Film::where('submission_setting_id', $setting->id)->count() : 0,
         ];
     }
 
@@ -182,44 +128,130 @@ class LandingController extends Controller
             return collect();
         }
 
-        $reviewStart = $setting->close_at->copy()->addDay();
-        $reviewEnd = $setting->close_at->copy()->addDays(7);
-        $officialSelection = $setting->close_at->copy()->addDays(8);
-        $juryStart = $setting->close_at->copy()->addDays(9);
-        $juryEnd = $setting->close_at->copy()->addDays(20);
-        $awardingStart = $setting->close_at->copy()->addDays(22);
-        $awardingEnd = $setting->close_at->copy()->addDays(25);
+        return collect($setting->timeline_items ?: SubmissionSetting::defaultTimelineItems(
+            $setting->open_at,
+            $setting->close_at,
+            $setting->display_name
+        ));
+    }
 
+    protected function completedPeriod()
+    {
+        return SubmissionSetting::where('close_at', '<', now())
+            ->orderByDesc('close_at')
+            ->first();
+    }
+
+    protected function fallbackLastYearFilms(SubmissionSetting $completedPeriod = null)
+    {
+        if (!$completedPeriod) {
+            return collect();
+        }
+
+        return Film::with(['category', 'user.detail'])
+            ->where('submission_setting_id', $completedPeriod->id)
+            ->whereNotNull('poster')
+            ->orderByRaw("CASE WHEN winner_rank IS NULL THEN 1 ELSE 0 END")
+            ->orderBy('winner_rank')
+            ->latest()
+            ->take(6)
+            ->get();
+    }
+
+    protected function buildFeaturedLastYearFilms(SubmissionSetting $setting = null, $fallbackLastYearFilms = null)
+    {
+        $fallbackLastYearFilms = $fallbackLastYearFilms ?: collect();
+        $filmIds = collect(optional($setting)->last_year_featured_film_ids ?: [])
+            ->filter()
+            ->map(function ($filmId) {
+                return (int) $filmId;
+            })
+            ->values();
+
+        if ($filmIds->isEmpty()) {
+            return $fallbackLastYearFilms;
+        }
+
+        $order = $filmIds->flip();
+
+        return Film::with(['category', 'user.detail'])
+            ->whereIn('id', $filmIds->all())
+            ->get()
+            ->sortBy(function ($film) use ($order) {
+                return $order->get($film->id, PHP_INT_MAX);
+            })
+            ->values();
+    }
+
+    protected function derivedLastYearStats(SubmissionSetting $completedPeriod = null)
+    {
+        if (!$completedPeriod) {
+            return [
+                'film_submitted' => 0,
+                'special_films' => 0,
+                'audience' => 0,
+                'participants' => 0,
+            ];
+        }
+
+        return [
+            'film_submitted' => Film::where('submission_setting_id', $completedPeriod->id)->count(),
+            'special_films' => Film::where('submission_setting_id', $completedPeriod->id)
+                ->whereIn('curation_status', [Film::CURATION_APPROVED, Film::CURATION_REJECTED])
+                ->count(),
+            'audience' => 0,
+            'participants' => Film::where('submission_setting_id', $completedPeriod->id)
+                ->distinct()
+                ->count('user_id'),
+        ];
+    }
+
+    protected function buildFestivalStats(SubmissionSetting $setting = null, array $derivedStats = [])
+    {
         return collect([
             [
-                'period' => $setting->open_at->translatedFormat('d M Y') . ' - ' . $setting->close_at->translatedFormat('d M Y'),
-                'title' => 'Open Submission',
-                'description' => 'Publikasi dan penjaringan karya film untuk periode ' . $setting->display_name . '.',
-                'icon' => 'fas fa-inbox',
+                'label' => 'Film Submitted',
+                'value' => optional($setting)->last_year_stat_film_submitted ?? ($derivedStats['film_submitted'] ?? 0),
+                'suffix' => '',
             ],
             [
-                'period' => $reviewStart->translatedFormat('d M Y') . ' - ' . $reviewEnd->translatedFormat('d M Y'),
-                'title' => 'Kurasi & Seleksi',
-                'description' => 'Kurator memeriksa kelengkapan dan kualitas karya dari tiap kategori.',
-                'icon' => 'fas fa-search',
+                'label' => 'Special Films',
+                'value' => optional($setting)->last_year_stat_special_films ?? ($derivedStats['special_films'] ?? 0),
+                'suffix' => '+',
             ],
             [
-                'period' => $officialSelection->translatedFormat('d M Y'),
-                'title' => 'Official Selection',
-                'description' => 'Pengumuman karya yang lolos ke tahap penjurian.',
-                'icon' => 'fas fa-trophy',
+                'label' => 'Audience',
+                'value' => optional($setting)->last_year_stat_audience ?? ($derivedStats['audience'] ?? 0),
+                'suffix' => '+',
             ],
             [
-                'period' => $juryStart->translatedFormat('d M Y') . ' - ' . $juryEnd->translatedFormat('d M Y'),
-                'title' => 'Proses Penjurian',
-                'description' => 'Juri memberi nilai dan menentukan peringkat terbaik di periode ini.',
-                'icon' => 'fas fa-film',
+                'label' => 'Participants',
+                'value' => optional($setting)->last_year_stat_participants ?? ($derivedStats['participants'] ?? 0),
+                'suffix' => '',
             ],
-            [
-                'period' => $awardingStart->translatedFormat('d M Y') . ' - ' . $awardingEnd->translatedFormat('d M Y'),
-                'title' => 'Awarding ' . $setting->close_at->format('Y'),
-                'description' => 'Pengumuman pemenang dan perayaan karya terbaik festival.',
-                'icon' => 'fas fa-crown',
+        ]);
+    }
+
+    protected function buildCompetitionCategories()
+    {
+        return collect([
+            (object) [
+                'name' => 'Umum Nasional',
+                'resolved_summary' => 'Kompetisi film horor terbuka bagi sineas Indonesia dari berbagai latar belakang.',
+                'image_url' => asset('landing/images/kategori/UMUM.png'),
+                'resolved_detail_route' => '/umum',
+            ],
+            (object) [
+                'name' => 'Pelajar Se - Jawa Timur',
+                'resolved_summary' => 'Kompetisi film horor bagi pelajar SMA/SMK wilayah provinsi Jawa Timur.',
+                'image_url' => asset('landing/images/kategori/PELAJAR REGIONAL.png'),
+                'resolved_detail_route' => '/pelajar',
+            ],
+            (object) [
+                'name' => 'Ekshibisi Lokal Pacitan',
+                'resolved_summary' => 'Kompetisi film horor bagi organisasi, komunitas lokal, serta pelajar SD - SMP di Pacitan.',
+                'image_url' => asset('landing/images/kategori/EKSIBISI.png'),
+                'resolved_detail_route' => '/ekshibisi',
             ],
         ]);
     }

@@ -16,7 +16,7 @@ class LandingContentTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_home_page_uses_submission_setting_and_previous_winner_data()
+    public function test_home_page_uses_manual_featured_films_and_stats_from_submission_setting()
     {
         $category = Category::factory()->create([
             'name' => 'Umum Nasional',
@@ -33,6 +33,10 @@ class LandingContentTest extends TestCase
             'festival_board' => [
                 ['name' => 'Board Satu', 'title' => 'Ketua Festival', 'image' => 'landing/images/user.png'],
             ],
+            'last_year_stat_film_submitted' => 321,
+            'last_year_stat_special_films' => 88,
+            'last_year_stat_audience' => 9900,
+            'last_year_stat_participants' => 77,
         ]);
 
         $previousSetting = SubmissionSetting::factory()->create([
@@ -43,6 +47,19 @@ class LandingContentTest extends TestCase
 
         $participant = User::factory()->role('peserta')->create([
             'category_id' => $category->id,
+        ]);
+
+        $featuredFilm = Film::factory()->create([
+            'user_id' => $participant->id,
+            'submission_setting_id' => $previousSetting->id,
+            'category_id' => $category->id,
+            'name' => 'Film Pilihan Admin',
+            'winner_rank' => null,
+            'curation_status' => Film::CURATION_APPROVED,
+        ]);
+
+        $activeSetting->update([
+            'last_year_featured_film_ids' => [$featuredFilm->id],
         ]);
 
         Film::factory()->create([
@@ -59,11 +76,36 @@ class LandingContentTest extends TestCase
             ->assertSee('FFH')
             ->assertSee('Tentang FFH 2026')
             ->assertSee('Board Satu')
+            ->assertSee('Film Pilihan Admin')
             ->assertSee('Film Juara Sebelumnya')
-            ->assertSee('Umum Nasional');
+            ->assertSee('Umum Nasional')
+            ->assertSee('Special Films')
+            ->assertSee('Audience')
+            ->assertSee('Participants')
+            ->assertSee('321')
+            ->assertSee('9900');
     }
 
-    public function test_program_page_shows_dynamic_categories_and_jury_members()
+    public function test_home_page_shows_program_highlight_and_partner_sections_when_submission_is_closed()
+    {
+        SubmissionSetting::factory()->create([
+            'name' => 'Periode 2025',
+            'theme_name' => 'INDIGO',
+            'open_at' => now()->subMonths(2),
+            'close_at' => now()->subMonth(),
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Program Highlight')
+            ->assertSee('OFFICIAL COLLABORATOR')
+            ->assertSee('OFFICIAL PARTNERS')
+            ->assertDontSee('SPECIAL FEATURE PROGRAM')
+            ->assertDontSee('Timeline Kompetisi Film')
+            ->assertDontSee('Kategori Kompetisi Film');
+    }
+
+    public function test_program_page_shows_hardcoded_categories_jury_members_and_faq()
     {
         $category = Category::factory()->create([
             'name' => 'Pelajar Se - Jawa Timur',
@@ -84,8 +126,9 @@ class LandingContentTest extends TestCase
         $this->get('/program')
             ->assertOk()
             ->assertSee('Pelajar Se - Jawa Timur')
-            ->assertSee('Kompetisi film pelajar.')
-            ->assertSee('Juri Pelajar');
+            ->assertSee('Kompetisi film horor bagi pelajar SMA/SMK wilayah provinsi Jawa Timur.')
+            ->assertSee('Juri Pelajar')
+            ->assertSee('Kapan pengumuman Official Selection dilakukan?');
     }
 
     public function test_authenticated_user_sees_total_cart_quantity_in_landing_badge()

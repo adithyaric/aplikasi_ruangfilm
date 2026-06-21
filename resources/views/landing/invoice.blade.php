@@ -38,11 +38,11 @@
                         <div><b>Status:</b> {{ strtoupper(str_replace('_', ' ', $order->status)) }}</div>
                         <div><b>Batas Pembayaran:</b> {{ optional($order->payment_due_at)->translatedFormat('d F Y H:i') ?? '-' }} WIB</div>
                         <div><b>Subtotal:</b> Rp {{ number_format($order->subtotal, 0, ',', '.') }}</div>
-                        <div><b>Ongkir:</b> Rp {{ number_format($order->shipping_fee, 0, ',', '.') }}</div>
-                        <div class="text-white font-semibold"><b>Total:</b> Rp {{ number_format($order->total, 0, ',', '.') }}</div>
+                    <div><b>Ongkir:</b> Rp {{ number_format($order->shipping_fee, 0, ',', '.') }}</div>
+                    <div class="text-white font-semibold"><b>Total:</b> Rp {{ number_format($order->total, 0, ',', '.') }}</div>
                     </div>
                     @if($order->payment_proof_path)
-                    <a href="{{ asset('storage/' . $order->payment_proof_path) }}" target="_blank" class="mt-5 inline-flex text-purple-300 text-sm hover:text-purple-200">
+                    <a href="{{ $order->paymentProofUrl() }}" target="_blank" class="mt-5 inline-flex text-purple-300 text-sm hover:text-purple-200">
                         Lihat bukti transfer
                     </a>
                     @endif

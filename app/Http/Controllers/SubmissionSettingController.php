@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AppSetting;
+use App\Models\Film;
 use App\Models\SubmissionSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -17,6 +18,14 @@ class SubmissionSettingController extends Controller
             'title' => 'Setting Submission',
             'setting' => $currentSetting,
             'landingSetting' => $currentSetting,
+            'availableFeaturedFilms' => Film::with(['category', 'submissionSetting'])->latest()->get(),
+            'defaultFeaturedFilmIds' => $this->defaultFeaturedFilmIds(),
+            'defaultLastYearStats' => $this->defaultLastYearStats(),
+            'defaultTimelineItems' => SubmissionSetting::defaultTimelineItems(
+                optional($currentSetting)->open_at,
+                optional($currentSetting)->close_at,
+                optional($currentSetting)->display_name
+            ),
             'submissionPeriods' => SubmissionSetting::orderByDesc('open_at')->get(),
         ]);
     }
@@ -142,6 +151,18 @@ class SubmissionSettingController extends Controller
             'last_year_description' => 'nullable|string',
             'last_year_catalog_label' => 'nullable|string|max:255',
             'last_year_catalog_url' => 'nullable|string|max:255',
+            'last_year_catalog_file' => 'nullable|file|mimes:pdf|max:10240',
+            'last_year_featured_film_ids' => 'nullable|array',
+            'last_year_featured_film_ids.*' => 'nullable|integer|exists:films,id',
+            'last_year_stat_film_submitted' => 'nullable|integer|min:0',
+            'last_year_stat_special_films' => 'nullable|integer|min:0',
+            'last_year_stat_audience' => 'nullable|integer|min:0',
+            'last_year_stat_participants' => 'nullable|integer|min:0',
+            'timeline_items' => 'nullable|array',
+            'timeline_items.*.period' => 'nullable|string|max:255',
+            'timeline_items.*.title' => 'nullable|string|max:255',
+            'timeline_items.*.description' => 'nullable|string',
+            'timeline_items.*.icon' => 'nullable|string|max:255',
         ];
 
         return $bag
@@ -156,10 +177,13 @@ class SubmissionSettingController extends Controller
         $payload['hero_image'] = $this->storeOrKeepImage($request, 'hero_image', optional($submissionSetting)->hero_image);
         $payload['about_image'] = $this->storeOrKeepImage($request, 'about_image', optional($submissionSetting)->about_image);
         $payload['theme_image'] = $this->storeOrKeepImage($request, 'theme_image', optional($submissionSetting)->theme_image);
+        $payload['last_year_catalog_file'] = $this->storeOrKeepFile($request, 'last_year_catalog_file', optional($submissionSetting)->last_year_catalog_file, 'landing-settings/catalogs');
         $payload['festival_board'] = $this->buildBoardMembers($request, $submissionSetting);
-        $payload['last_year_catalog_url'] = $request->filled('last_year_catalog_url')
-            ? trim($request->last_year_catalog_url)
-            : null;
+        $payload['last_year_featured_film_ids'] = $this->buildFeaturedFilmIds($request, $submissionSetting);
+        $payload['timeline_items'] = $this->buildTimelineItems($request);
+        $payload['last_year_catalog_url'] = array_key_exists('last_year_catalog_url', $validated)
+            ? ($request->filled('last_year_catalog_url') ? trim($request->last_year_catalog_url) : null)
+            : optional($submissionSetting)->last_year_catalog_url;
 
         unset($payload['festival_board_images']);
 
@@ -171,8 +195,20 @@ class SubmissionSettingController extends Controller
         $payload = [];
 
         foreach ($this->landingFields() as $field) {
-            if ($field === 'festival_board') {
+            if (in_array($field, ['festival_board', 'last_year_featured_film_ids', 'timeline_items'], true)) {
                 $payload[$field] = $submissionSetting ? ($submissionSetting->festival_board ?: []) : [];
+                if ($field === 'last_year_featured_film_ids') {
+                    $payload[$field] = $submissionSetting ? ($submissionSetting->last_year_featured_film_ids ?: []) : [];
+                }
+                if ($field === 'timeline_items') {
+                    $payload[$field] = $submissionSetting
+                        ? ($submissionSetting->timeline_items ?: SubmissionSetting::defaultTimelineItems(
+                            $submissionSetting->open_at,
+                            $submissionSetting->close_at,
+                            $submissionSetting->display_name
+                        ))
+                        : [];
+                }
                 continue;
             }
 
@@ -203,6 +239,13 @@ class SubmissionSettingController extends Controller
             'last_year_description',
             'last_year_catalog_label',
             'last_year_catalog_url',
+            'last_year_catalog_file',
+            'last_year_featured_film_ids',
+            'last_year_stat_film_submitted',
+            'last_year_stat_special_films',
+            'last_year_stat_audience',
+            'last_year_stat_participants',
+            'timeline_items',
         ];
     }
 
@@ -237,8 +280,13 @@ class SubmissionSettingController extends Controller
 
     protected function storeOrKeepImage(Request $request, $field, $existingPath = null)
     {
+        return $this->storeOrKeepFile($request, $field, $existingPath, 'landing-settings');
+    }
+
+    protected function storeOrKeepFile(Request $request, $field, $existingPath = null, $directory = 'landing-settings')
+    {
         if ($request->hasFile($field)) {
-            return $request->file($field)->store('landing-settings', 'public');
+            return $request->file($field)->store($directory, 'public');
         }
 
         return $existingPath;
@@ -256,6 +304,7 @@ class SubmissionSettingController extends Controller
             $submissionSetting->hero_image,
             $submissionSetting->about_image,
             $submissionSetting->theme_image,
+            $submissionSetting->last_year_catalog_file,
         ], $boardImages)));
     }
 
@@ -271,6 +320,7 @@ class SubmissionSettingController extends Controller
             $payload['hero_image'] ?? null,
             $payload['about_image'] ?? null,
             $payload['theme_image'] ?? null,
+            $payload['last_year_catalog_file'] ?? null,
         ], $boardImages)));
     }
 
@@ -299,8 +349,96 @@ class SubmissionSettingController extends Controller
                 $query->where('hero_image', $path)
                     ->orWhere('about_image', $path)
                     ->orWhere('theme_image', $path)
+                    ->orWhere('last_year_catalog_file', $path)
                     ->orWhere('festival_board', 'like', '%' . $path . '%');
             })
             ->exists();
+    }
+
+    protected function buildFeaturedFilmIds(Request $request, SubmissionSetting $submissionSetting = null)
+    {
+        return collect($request->input('last_year_featured_film_ids', optional($submissionSetting)->last_year_featured_film_ids ?: []))
+            ->filter(function ($filmId) {
+                return filled($filmId);
+            })
+            ->map(function ($filmId) {
+                return (int) $filmId;
+            })
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    protected function buildTimelineItems(Request $request)
+    {
+        return collect($request->input('timeline_items', []))
+            ->map(function ($item) {
+                return [
+                    'period' => trim((string) data_get($item, 'period')),
+                    'title' => trim((string) data_get($item, 'title')),
+                    'description' => trim((string) data_get($item, 'description')),
+                    'icon' => trim((string) data_get($item, 'icon')),
+                ];
+            })
+            ->filter(function ($item) {
+                return filled($item['period'])
+                    || filled($item['title'])
+                    || filled($item['description'])
+                    || filled($item['icon']);
+            })
+            ->values()
+            ->all();
+    }
+
+    protected function completedPeriod()
+    {
+        return SubmissionSetting::where('close_at', '<', now())
+            ->orderByDesc('close_at')
+            ->first();
+    }
+
+    protected function defaultFeaturedFilmIds()
+    {
+        $completedPeriod = $this->completedPeriod();
+
+        if (!$completedPeriod) {
+            return [];
+        }
+
+        return Film::query()
+            ->where('submission_setting_id', $completedPeriod->id)
+            ->whereNotNull('poster')
+            ->orderByRaw("CASE WHEN winner_rank IS NULL THEN 1 ELSE 0 END")
+            ->orderBy('winner_rank')
+            ->latest()
+            ->take(6)
+            ->pluck('id')
+            ->values()
+            ->all();
+    }
+
+    protected function defaultLastYearStats()
+    {
+        $completedPeriod = $this->completedPeriod();
+
+        if (!$completedPeriod) {
+            return [
+                'last_year_stat_film_submitted' => 0,
+                'last_year_stat_special_films' => 0,
+                'last_year_stat_audience' => 0,
+                'last_year_stat_participants' => 0,
+            ];
+        }
+
+        return [
+            'last_year_stat_film_submitted' => Film::where('submission_setting_id', $completedPeriod->id)->count(),
+            'last_year_stat_special_films' => Film::where('submission_setting_id', $completedPeriod->id)
+                ->whereIn('curation_status', [Film::CURATION_APPROVED, Film::CURATION_REJECTED])
+                ->count(),
+            'last_year_stat_audience' => 0,
+            'last_year_stat_participants' => Film::where('submission_setting_id', $completedPeriod->id)
+                ->distinct()
+                ->count('user_id'),
+        ];
     }
 }

@@ -71,6 +71,66 @@ class CheckoutFlowTest extends TestCase
         $this->assertSame(0, $user->cart()->first()->items()->count());
     }
 
+    public function test_general_buyer_can_fill_shipping_biodata_inline_during_checkout()
+    {
+        $user = User::factory()->create([
+            'role' => 'umum',
+            'category_id' => null,
+            'email' => 'buyer-inline@gmail.com',
+        ]);
+
+        $merchCategory = MerchandiseCategory::factory()->create();
+        $merchandise = Merchandise::factory()->create([
+            'merchandise_category_id' => $merchCategory->id,
+            'price' => 120000,
+            'qty_stock' => 10,
+        ]);
+        $expedition = Expedition::factory()->create([
+            'fee' => 15000,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('cart.store', $merchandise), ['quantity' => 1])
+            ->assertRedirect();
+
+        $this->actingAs($user)
+            ->get(route('checkout.show'))
+            ->assertOk()
+            ->assertSee('Biodata Pengiriman');
+
+        $response = $this->actingAs($user)
+            ->post(route('checkout.store'), [
+                'name' => 'Buyer Inline',
+                'email' => 'buyer-inline@gmail.com',
+                'no_hp' => '081234567890',
+                'provinsi_code' => '35',
+                'provinsi_name' => 'JAWA TIMUR',
+                'kabupaten_code' => '3501',
+                'kabupaten_name' => 'KABUPATEN PACITAN',
+                'kecamatan_code' => '3501010',
+                'kecamatan_name' => 'PACITAN',
+                'desa_code' => '3501010001',
+                'desa_name' => 'BALEHARJO',
+                'alamat_lengkap' => 'Jl. Pantai Selatan No. 1',
+                'expedition_id' => $expedition->id,
+                'postal_code' => '63511',
+            ]);
+
+        $order = Order::first();
+
+        $response->assertRedirect(route('orders.show', $order));
+        $this->assertDatabaseHas('user_details', [
+            'user_id' => $user->id,
+            'provinsi_name' => 'JAWA TIMUR',
+            'alamat_lengkap' => 'Jl. Pantai Selatan No. 1',
+        ]);
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'recipient_name' => 'Buyer Inline',
+            'full_address' => 'Jl. Pantai Selatan No. 1, BALEHARJO, PACITAN, KABUPATEN PACITAN, JAWA TIMUR',
+        ]);
+    }
+
     public function test_payment_proof_upload_and_admin_verification_work()
     {
         Storage::fake('public');
@@ -105,6 +165,28 @@ class CheckoutFlowTest extends TestCase
             'status' => Order::STATUS_PAID,
             'verified_by' => $admin->id,
         ]);
+    }
+
+    public function test_payment_proof_links_support_legacy_storage_prefixed_paths()
+    {
+        $admin = User::factory()->role('admin')->create();
+        $user = User::factory()->role('peserta')->create();
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'payment_proof_path' => 'storage/payment-proofs/legacy-proof.jpg',
+        ]);
+
+        $expectedUrl = asset('storage/payment-proofs/legacy-proof.jpg');
+
+        $this->actingAs($user)
+            ->get(route('orders.show', $order))
+            ->assertOk()
+            ->assertSee($expectedUrl);
+
+        $this->actingAs($admin)
+            ->get(route('admin.orders.show', $order))
+            ->assertOk()
+            ->assertSee($expectedUrl);
     }
 
     public function test_overdue_order_is_expired_and_stock_is_restored()

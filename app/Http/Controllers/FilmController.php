@@ -14,6 +14,10 @@ class FilmController extends Controller
 {
     public function index()
     {
+        if ($redirect = $this->redirectGeneralBuyerAway()) {
+            return $redirect;
+        }
+
         $title = 'Submission';
         $categories = Category::orderBy('sort_order')->orderBy('name')->get();
 
@@ -30,6 +34,10 @@ class FilmController extends Controller
 
     public function create()
     {
+        if ($redirect = $this->redirectGeneralBuyerAway()) {
+            return $redirect;
+        }
+
         $activeSetting = SubmissionSetting::currentActive();
 
         if (!$activeSetting) {
@@ -50,6 +58,10 @@ class FilmController extends Controller
 
     public function store(Request $request)
     {
+        if ($redirect = $this->redirectGeneralBuyerAway()) {
+            return $redirect;
+        }
+
         $activeSetting = SubmissionSetting::currentActive();
 
         if (!$activeSetting) {
@@ -146,6 +158,10 @@ class FilmController extends Controller
 
     public function show($id)
     {
+        if ($redirect = $this->redirectGeneralBuyerAway()) {
+            return $redirect;
+        }
+
         $title = 'Detail Submission';
         $film = Film::with(['user.category', 'user.detail', 'category', 'submissionSetting', 'juryScores.jury'])->findOrFail($id);
         return view('film.show', compact('film', 'title'));
@@ -153,6 +169,10 @@ class FilmController extends Controller
 
     public function edit($id)
     {
+        if ($redirect = $this->redirectGeneralBuyerAway()) {
+            return $redirect;
+        }
+
         if (in_array(auth()->user()->role, ['admin', 'adminsub'], true)) {
             $film = Film::findOrFail($id);
         } else {
@@ -168,6 +188,10 @@ class FilmController extends Controller
 
     public function update(Request $request, $id)
     {
+        if ($redirect = $this->redirectGeneralBuyerAway()) {
+            return $redirect;
+        }
+
         if (in_array(auth()->user()->role, ['admin', 'adminsub'], true)) {
             $film = Film::findOrFail($id);
         } else {
@@ -272,6 +296,10 @@ class FilmController extends Controller
 
     public function destroy($id)
     {
+        if ($redirect = $this->redirectGeneralBuyerAway()) {
+            return $redirect;
+        }
+
         if (in_array(auth()->user()->role, ['admin', 'adminsub'], true)) {
             $film = Film::findOrFail($id);
         } else {
@@ -305,6 +333,10 @@ class FilmController extends Controller
 
     public function downloadGsm($id)
     {
+        if ($redirect = $this->redirectGeneralBuyerAway()) {
+            return $redirect;
+        }
+
         $film     = Film::findOrFail($id);
         $gsmFiles = json_decode($film->gsm, true) ?? [];
 
@@ -339,5 +371,15 @@ class FilmController extends Controller
 
         // Download lalu hapus file temp
         return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
+    }
+
+    protected function redirectGeneralBuyerAway()
+    {
+        if (auth()->check() && auth()->user()->role === 'umum') {
+            return redirect()->route('merchandise')
+                ->with('warning', 'Akun umum tidak dapat mengakses halaman submission film.');
+        }
+
+        return null;
     }
 }

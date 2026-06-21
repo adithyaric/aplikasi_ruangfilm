@@ -15,6 +15,11 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
+        if ($user->role === 'umum') {
+            return redirect()->route('orders.index')
+                ->with('warning', 'Akun umum menggunakan halaman landing untuk belanja dan mengelola pesanan.');
+        }
+
         if ($user->role == 'peserta') {
             return $this->dashboardPeserta();
         } elseif (in_array($user->role, ['admin', 'adminsub', 'kurator', 'juri'], true)) {

@@ -6,8 +6,11 @@ use App\Models\AppSetting;
 use App\Models\Cart;
 use App\Models\Expedition;
 use App\Models\Order;
+use App\Models\UserDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Laravolt\Indonesia\Models\Province;
 
 class CheckoutController extends Controller
 {
@@ -22,8 +25,9 @@ class CheckoutController extends Controller
         }
 
         $user = auth()->user()->load('detail');
+        $isGeneralBuyer = $user->role === 'umum';
 
-        if (!$user->detail) {
+        if (!$user->detail && !$isGeneralBuyer) {
             return redirect()->route('user-detail.index')
                 ->with('warning', 'Lengkapi biodata terlebih dahulu sebelum checkout.');
         }
@@ -32,18 +36,45 @@ class CheckoutController extends Controller
             'cart' => $cart,
             'expeditions' => Expedition::where('is_active', true)->orderBy('name')->get(),
             'user' => $user,
+            'isGeneralBuyer' => $isGeneralBuyer,
+            'provinsi' => $isGeneralBuyer ? Province::orderBy('name')->get() : collect(),
         ]);
     }
 
     public function store(Request $request)
     {
-        $request->validate([
+        $user = auth()->user()->load('detail');
+        $isGeneralBuyer = $user->role === 'umum';
+
+        $rules = [
             'expedition_id' => 'required|exists:expeditions,id',
             'postal_code' => 'nullable|string|max:10',
             'notes' => 'nullable|string',
-        ]);
+        ];
 
-        $user = auth()->user()->load('detail');
+        if ($isGeneralBuyer) {
+            $rules = array_merge($rules, [
+                'name' => 'required|string|max:100',
+                'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($user->id)],
+                'no_hp' => 'required|string|min:10|max:15|regex:/^[0-9]+$/',
+                'provinsi_code' => 'required',
+                'provinsi_name' => 'required',
+                'kabupaten_code' => 'required',
+                'kabupaten_name' => 'required',
+                'kecamatan_code' => 'required',
+                'kecamatan_name' => 'required',
+                'desa_code' => 'required',
+                'desa_name' => 'required',
+                'alamat_lengkap' => 'required|string',
+            ]);
+        }
+
+        $request->validate($rules);
+
+        if ($isGeneralBuyer) {
+            $this->persistGeneralBuyerProfile($request, $user);
+            $user->load('detail');
+        }
 
         if (!$user->detail) {
             return redirect()->route('user-detail.index')
@@ -137,5 +168,33 @@ class CheckoutController extends Controller
         } while (Order::where('invoice_number', $number)->exists());
 
         return $number;
+    }
+
+    protected function persistGeneralBuyerProfile(Request $request, $user)
+    {
+        $user->update([
+            'name' => $request->name,
+            'email' => $request->email,
+            'no_hp' => $request->no_hp,
+        ]);
+
+        UserDetail::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'community_name' => null,
+                'provinsi_code' => $request->provinsi_code,
+                'provinsi_name' => $request->provinsi_name,
+                'kabupaten_code' => $request->kabupaten_code,
+                'kabupaten_name' => $request->kabupaten_name,
+                'kecamatan_code' => $request->kecamatan_code,
+                'kecamatan_name' => $request->kecamatan_name,
+                'desa_code' => $request->desa_code,
+                'desa_name' => $request->desa_name,
+                'username_ig' => null,
+                'posisi' => null,
+                'alamat_lengkap' => $request->alamat_lengkap,
+                'tanggal_lahir' => null,
+            ]
+        );
     }
 }

@@ -74,4 +74,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(JuryScore::class, 'jury_id');
     }
+
+    public function isGeneralBuyer()
+    {
+        return $this->role === 'umum';
+    }
 }

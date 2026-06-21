@@ -41,16 +41,16 @@
                         class="w-full h-10 rounded-xl border border-purple-500/40 bg-purple-500/10 text-purple-300 text-sm font-semibold flex items-center justify-center gap-2 hover:bg-purple-500/25 transition-colors duration-200 {{ $merchandise->qty_stock < 1 ? 'opacity-50 cursor-not-allowed' : '' }}"
                         {{ $merchandise->qty_stock < 1 ? 'disabled' : '' }}>
                         <i class="fas fa-shopping-cart text-sm"></i>
-                        {{ $merchandise->qty_stock < 1 ? 'Stok Habis' : 'Tambah' }}
+                        {{ $merchandise->qty_stock < 1 ? 'Stok Habis' : 'Tambah ke Keranjang' }}
                     </button>
                 </form>
-                <a href="{{ route('cart.index') }}"
-                    class="flex-1 h-10 rounded-xl bg-gradient-to-r from-purple-700 to-purple-500 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-85 transition-opacity duration-200">
-                    <i class="fas fa-bolt text-xs"></i>
-                    Keranjang
-                </a>
+                {{-- <a href="{{ route('cart.index') }}" --}}
+                    {{-- class="flex-1 h-10 rounded-xl bg-gradient-to-r from-purple-700 to-purple-500 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-85 transition-opacity duration-200"> --}}
+                    {{-- <i class="fas fa-bolt text-xs"></i> --}}
+                    {{-- Keranjang --}}
+                {{-- </a> --}}
                 @else
-                <a href="{{ route('login') }}"
+                <a href="{{ route('login', ['role' => 'umum']) }}"
                     class="flex-1 h-10 rounded-xl bg-gradient-to-r from-purple-700 to-purple-500 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-85 transition-opacity duration-200">
                     <i class="fas fa-sign-in-alt text-xs"></i>
                     Login untuk Beli

@@ -13,10 +13,12 @@
     $themeQuote = $landingSetting?->theme_quote ?? '"Melihat yang tak terlihat. Membaca yang terlupakan. Membangun yang akan datang."';
     $themeParagraphs = preg_split("/(\r\n|\n|\r){2,}/", trim($landingSetting?->theme_description ?? ''));
     $lastYearTitle = $landingSetting?->last_year_title ?? 'A New Horror Experience';
-    $lastYearDescription = $landingSetting?->last_year_description ?? 'Periode sebelumnya menjadi ruang pertemuan karya, sineas, komunitas, dan publik. Semua karya yang tampil di bawah ini diambil langsung dari data submission dan pemenang periode yang sudah selesai.';
-    $lastYearCatalogUrl = $landingSetting?->last_year_catalog_url ?? route('download.ekatalog');
-    $lastYearCatalogHref = \Illuminate\Support\Str::startsWith($lastYearCatalogUrl, ['http://', 'https://', '/']) ? $lastYearCatalogUrl : url($lastYearCatalogUrl);
-    $lastYearCatalogLabel = $landingSetting->last_year_catalog_label ?? 'Download Katalog Festival';
+    $lastYearDescription = $landingSetting?->last_year_description ?? 'Festival Film Horor Pacitan 2025 menjadi langkah awal hadirnya platform horor berbasis kelokalan di Indonesia.';
+    $lastYearCatalogHref = route('download.ekatalog');
+    $lastYearCatalogLabel = $landingSetting?->last_year_catalog_label ?? 'Download Katalog Festival';
+    $hasClosedLandingPeriod = $landingSetting && !$submissionOpen && !$isBeforeOpen;
+    $showLandingProgramSections = !$hasClosedLandingPeriod;
+    $hasManualFeaturedFilms = collect($landingSetting?->last_year_featured_film_ids ?: [])->filter()->isNotEmpty();
 @endphp
 
 <main class="relative z-10">
@@ -40,7 +42,7 @@
 
                     <div>
                         @if($submissionOpen)
-                        <a href="{{ route('register') }}"
+                        <a href="{{ route('register', ['role' => 'peserta']) }}"
                             class="btn-gradient px-8 md:px-10 py-3 md:py-4 rounded-full text-white font-semibold text-base md:text-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_0_25px_#8B5CF6] inline-flex items-center gap-3 group">
                             <i class="fas fa-upload text-white group-hover:translate-y-[-2px] transition-transform duration-300"></i>
                             Submit Film Sekarang
@@ -191,7 +193,7 @@
                                         <div class="relative rounded-2xl overflow-hidden glass-card-light transition-all duration-300 group-hover:scale-[1.02] group-hover:shadow-[0_0_20px_#6D28D9]">
                                             <div class="relative w-full h-72 overflow-hidden bg-gradient-to-b from-purple-900/30 to-black/50">
                                                 <img
-                                                    src="{{ asset('storage/' . $film->poster) }}"
+                                                    src="{{ $film->poster ? asset('storage/' . $film->poster) : asset('landing/images/user.png') }}"
                                                     alt="{{ $film->name }}"
                                                     class="absolute w-full h-full object-cover transition-opacity duration-700 ease-in-out" />
                                                 <div class="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
@@ -217,7 +219,11 @@
                                     <p style="text-align: justify;" class="text-gray-300 leading-relaxed text-sm md:text-base mb-4">
                                         {{ $lastYearDescription }}
                                     </p>
-                                    @if($completedSubmissionPeriod)
+                                    @if($hasManualFeaturedFilms)
+                                    <p class="text-purple-300 text-sm">
+                                        Pilihan film disusun manual dari panel admin.
+                                    </p>
+                                    @elseif($completedSubmissionPeriod)
                                     <p class="text-purple-300 text-sm">
                                         Periode referensi: {{ $completedSubmissionPeriod->display_name }}
                                     </p>
@@ -266,7 +272,7 @@
                             <div class="group transition-all duration-300">
                                 <div class="rounded-2xl overflow-hidden glass-card-light transition-all duration-300 group-hover:scale-[1.03] group-hover:shadow-[0_0_25px_#6D28D9]">
                                     <img
-                                        src="{{ asset('storage/' . $film->poster) }}"
+                                        src="{{ $film->poster ? asset('storage/' . $film->poster) : asset('landing/images/user.png') }}"
                                         alt="{{ $film->name }}"
                                         class="w-full h-80 object-cover" />
                                     <div class="p-5 space-y-2">
@@ -300,7 +306,7 @@
         </div>
     </section>
 
-    @if($landingSetting)
+    @if($showLandingProgramSections)
     <section class="max-w-7xl mx-auto px-6 md:px-10 py-24 md:py-28 indigo-program-section">
         <div class="fade-up">
             <p class="text-purple-400 text-sm md:text-base uppercase tracking-wider font-semibold mb-2">
@@ -319,7 +325,7 @@
             </div>
             <div class="relative w-full h-[350px] md:h-[420px] lg:h-[450px] overflow-hidden rounded-t-3xl">
                 <img
-                    src="{{ $landingSetting->mediaUrl($landingSetting->theme_image, 'landing/images/BACKGROUND FFH 2026.png') }}"
+                    src="{{ $landingSetting ? $landingSetting->mediaUrl($landingSetting->theme_image, 'landing/images/BACKGROUND FFH 2026.png') : asset('landing/images/BACKGROUND FFH 2026.png') }}"
                     alt="{{ $themeName }}"
                     class="absolute w-full h-full object-cover object-center" />
                 <div class="absolute inset-0 banner-gradient-overlay"></div>
@@ -344,15 +350,37 @@
                     </p>
                     @endforelse
                 </div>
+
+                <div class="mt-10 pt-6 border-t border-purple-500/20 flex justify-start items-center gap-3 text-sm text-purple-300">
+                    <i class="fas fa-eye text-purple-400"></i>
+                    <span class="tracking-wide">KOMPETISI FILM · WORKSHOP · FILM SCREENING · PAGELARAN BUDAYA · PASAR HANTU · PLESIR KIDUL · HOROR IMMERSIVE EXPERIENCE</span>
+                    <div class="flex-1"></div>
+                    <i class="fas fa-ghost text-purple-400/60"></i>
+                </div>
+
+                <div class="mt-12 pt-10 border-t border-purple-500/20">
+                    <div class="text-center space-y-4">
+                        <div class="text-5xl md:text-7xl font-black bg-gradient-to-r from-purple-400 via-fuchsia-400 to-purple-300 bg-clip-text text-transparent">
+                            <span id="competitionCounter" class="counter-value" data-target="{{ $specialFeatureStatValue }}">0</span>+
+                        </div>
+                        <p class="text-gray-300 text-sm md:text-base uppercase tracking-wider font-medium">
+                            Film Submitted
+                        </p>
+                        <div class="flex justify-center mt-6">
+                            <div class="w-20 h-[2px] bg-gradient-to-r from-transparent via-purple-500 to-transparent"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
-    @endif
 
     @include('layouts.landing.timeline-kompetisi-film', ['timelineItems' => $timelineItems])
     @include('layouts.landing.kompetisi-film', ['competitionCategories' => $competitionCategories])
-
     @include('landing.partials.home-merchandise-section', ['featuredMerchandises' => $featuredMerchandises])
+    @elseif($hasClosedLandingPeriod)
+    @include('landing.partials.program-highlight-section')
+    @endif
 
     <section class="max-w-7xl mx-auto px-6 md:px-10 py-24 md:py-28 tourism-section">
         <div class="fade-up">
@@ -401,14 +429,18 @@
                 </div>
 
                 <div class="lg:w-[35%] w-full flex flex-col items-center justify-center">
-                    <a href="{{ route('landing.program') }}"
-                        class="registration-btn group relative btn-gradient px-8 md:px-10 py-4 md:py-5 rounded-full text-white font-bold text-base md:text-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_#8B5CF6] inline-flex items-center gap-3 overflow-hidden cursor-pointer">
-                        <i class="fas fa-ticket-alt text-white transition-all duration-300"></i>
-                        <span class="font-semibold tracking-wide">Lihat Program</span>
-                    </a>
+                    <button
+                        class="registration-btn group relative btn-gradient px-8 md:px-10 py-4 md:py-5 rounded-full text-white font-bold text-base md:text-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_#8B5CF6] inline-flex items-center gap-3 overflow-hidden cursor-pointer"
+                        type="button">
+                        <i class="fas fa-ticket-alt text-white group-hover:hidden transition-all duration-300"></i>
+                        <i class="fas fa-lock hidden group-hover:inline-block text-white transition-all duration-300"></i>
+                        <span class="font-semibold tracking-wide">Coming Soon</span>
+                    </button>
                 </div>
             </div>
         </div>
     </section>
+
+    @include('landing.partials.partner-sections')
 </main>
 @endsection

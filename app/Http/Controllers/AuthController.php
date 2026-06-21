@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
@@ -15,11 +16,19 @@ class AuthController extends Controller
     {
         return view('auth.index', [
             'title' => 'Login | FFH',
+            'selectedRole' => in_array(request('role'), ['peserta', 'umum'], true) ? request('role') : 'umum',
         ]);
     }
 
     public function register()
     {
+        $submissionOpen = SubmissionSetting::isOpen();
+        $selectedRole = in_array(request('role'), ['peserta', 'umum'], true) ? request('role') : 'umum';
+
+        if (!$submissionOpen && $selectedRole === 'peserta') {
+            $selectedRole = 'umum';
+        }
+
         $categories = Category::query()
             ->where(function ($query) {
                 $query->whereNull('is_active')->orWhere('is_active', true);
@@ -28,12 +37,11 @@ class AuthController extends Controller
             ->orderBy('name')
             ->get();
 
-        if (!SubmissionSetting::isOpen()) {
-            return redirect()->back()->with('warning', 'Submission Telah Ditutup');
-        }
         return view('auth.register', [
             'title' => 'Register | FFH',
-            'categories' => $categories
+            'categories' => $categories,
+            'selectedRole' => $selectedRole,
+            'submissionOpen' => $submissionOpen,
         ]);
     }
 
@@ -44,7 +52,14 @@ class AuthController extends Controller
             'no_hp'   => 'required|string|min:10|max:15|regex:/^[0-9]+$/',
             'email'         => 'required|email|unique:users,email',
             'password'      => 'required|string|min:8',
-            'category_id'    => 'required|exists:categories,id',
+            'role' => ['required', Rule::in(['peserta', 'umum'])],
+            'category_id' => [
+                Rule::requiredIf(function () use ($request) {
+                    return $request->role === 'peserta';
+                }),
+                'nullable',
+                'exists:categories,id',
+            ],
         ], [
             'name.required'  => 'Nama lengkap wajib diisi.',
             'no_hp.required'   => 'Nomor WhatsApp wajib diisi.',
@@ -54,16 +69,23 @@ class AuthController extends Controller
             'email.unique'           => 'Email sudah terdaftar.',
             'password.required'      => 'Password wajib diisi.',
             'password.min'           => 'Password minimal 8 karakter.',
+            'role.required'          => 'Silakan pilih jenis akun.',
             'category_id.required'    => 'Kategori wajib dipilih.',
         ]);
+
+        if ($request->role === 'peserta' && !SubmissionSetting::isOpen()) {
+            return back()
+                ->withErrors(['role' => 'Pendaftaran peserta hanya dibuka saat submission aktif.'])
+                ->withInput();
+        }
 
         User::create([
             'name'  => $request->name,
             'no_hp'   => $request->no_hp,
             'email'         => $request->email,
-            'role'         => 'peserta',
+            'role'         => $request->role,
             'password'      => Hash::make($request->password),
-            'category_id'    => $request->category_id,
+            'category_id'    => $request->role === 'peserta' ? $request->category_id : null,
         ]);
 
         return redirect()->route('login')->with('success', 'Registrasi berhasil! Silakan login.');
@@ -78,7 +100,11 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
-            return redirect()->intended('dashboard');
+            $defaultRedirect = auth()->user()->isGeneralBuyer()
+                ? route('orders.index')
+                : route('dashboard');
+
+            return redirect()->intended($defaultRedirect);
         }
 
         return back()->withErrors([

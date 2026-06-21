@@ -7,7 +7,6 @@ use App\Models\Merchandise;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class OrderController extends Controller
 {
@@ -46,9 +45,7 @@ class OrderController extends Controller
             'payment_proof' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
-        if ($order->payment_proof_path) {
-            Storage::disk('public')->delete($order->payment_proof_path);
-        }
+        $order->deleteStoredPaymentProof();
 
         $path = $request->file('payment_proof')->store('payment-proofs', 'public');
 

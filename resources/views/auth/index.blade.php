@@ -18,6 +18,9 @@
 </head>
 
 <body>
+    @php
+    $selectedRole = $selectedRole ?? 'umum';
+    @endphp
     <main class="d-flex align-items-center min-vh-100 py-3 py-md-0">
         <div class="container">
             <div class="card login-card shadow-sm" style="border-radius: 16px; max-width: 420px; margin: 0 auto;">
@@ -39,6 +42,23 @@
                     <div class="text-center mb-3">
                         <img src="{{ asset('img/logo.png') }}" width="300px" alt="Logo" class="mb-2">
                         <!-- <p class="mb-3"><a href="#" style="color:#1a2aee; font-weight:600; font-size:18px;">SIMAP</a></p> -->
+                    </div>
+
+                    <div class="mb-4">
+                        <p class="text-center text-muted small mb-2">Pilih jenis akun</p>
+                        <div class="d-flex rounded-pill border overflow-hidden">
+                            <a href="{{ route('login', ['role' => 'umum']) }}"
+                                class="flex-fill text-center py-2 {{ $selectedRole === 'umum' ? 'bg-dark text-white' : 'bg-white text-dark' }}"
+                                style="text-decoration:none;">Umum</a>
+                            <a href="{{ route('login', ['role' => 'peserta']) }}"
+                                class="flex-fill text-center py-2 {{ $selectedRole === 'peserta' ? 'bg-dark text-white' : 'bg-white text-dark' }}"
+                                style="text-decoration:none;">Peserta</a>
+                        </div>
+                        <p class="text-center text-muted small mt-2 mb-0">
+                            {{ $selectedRole === 'peserta'
+                                ? 'Masuk untuk submission film dan akses dashboard peserta.'
+                                : 'Masuk untuk belanja merchandise, biodata pembeli, dan invoice.' }}
+                        </p>
                     </div>
 
                     <form class="login-form" action="{{ route('authenticate') }}" method="post">
@@ -71,8 +91,9 @@
                     @php
                     $submissionOpen = \App\Models\SubmissionSetting::isOpen();
                     @endphp
-                    @if($submissionOpen)
-                    <p class="text-center">Belum Memiliki Akun ? <a href="{{ route('register') }}">Daftar Disini !</a></p>
+                    <p class="text-center">Belum Memiliki Akun ? <a href="{{ route('register', ['role' => $selectedRole]) }}">Daftar Disini !</a></p>
+                    @if(!$submissionOpen)
+                    <p class="text-center text-muted small mb-2">Pendaftaran peserta sedang ditutup, tetapi akun umum tetap bisa dibuat untuk pembelian merchandise.</p>
                     @endif
                     <p class="text-center"><a href="/">Kembali Ke Halaman Utama</a></p>
                 </div>

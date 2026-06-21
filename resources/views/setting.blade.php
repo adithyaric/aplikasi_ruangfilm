@@ -212,6 +212,9 @@
         const boardList = document.getElementById('festival-board-list');
         const addButton = document.getElementById('add-board-member');
         const template = document.getElementById('festival-board-template');
+        const timelineList = document.getElementById('timeline-item-list');
+        const addTimelineButton = document.getElementById('add-timeline-item');
+        const timelineTemplate = document.getElementById('timeline-item-template');
 
         if (!boardList || !addButton || !template) {
             return;
@@ -233,6 +236,38 @@
             }
 
             const card = removeButton.closest('[data-board-member]');
+
+            if (card) {
+                card.remove();
+            }
+        });
+    })();
+
+    (function() {
+        const timelineList = document.getElementById('timeline-item-list');
+        const addTimelineButton = document.getElementById('add-timeline-item');
+        const timelineTemplate = document.getElementById('timeline-item-template');
+
+        if (!timelineList || !addTimelineButton || !timelineTemplate) {
+            return;
+        }
+
+        let nextIndex = timelineList.querySelectorAll('[data-timeline-item]').length;
+
+        addTimelineButton.addEventListener('click', function() {
+            const markup = timelineTemplate.innerHTML.replace(/__INDEX__/g, nextIndex);
+            timelineList.insertAdjacentHTML('beforeend', markup);
+            nextIndex += 1;
+        });
+
+        timelineList.addEventListener('click', function(event) {
+            const removeButton = event.target.closest('[data-remove-timeline-item]');
+
+            if (!removeButton) {
+                return;
+            }
+
+            const card = removeButton.closest('[data-timeline-item]');
 
             if (card) {
                 card.remove();

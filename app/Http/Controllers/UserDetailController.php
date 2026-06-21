@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\UserDetail;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Laravolt\Indonesia\Models\Province;
 
 class UserDetailController extends Controller
@@ -15,16 +16,20 @@ class UserDetailController extends Controller
      */
     public function index()
     {
-        $title = 'Biodata Peserta';
-        $detail   = UserDetail::where('user_id', auth()->id())->first();
+        $user = auth()->user()->load('detail', 'category');
+        $title = $user->role === 'umum' ? 'Biodata Pembeli' : 'Biodata Peserta';
+        $detail = $user->detail;
         $provinsi = Province::orderBy('name')->get();
 
-        return view('user-detail.create', compact('detail', 'provinsi', 'title'));
+        return view('landing.biodata', compact('detail', 'provinsi', 'title', 'user'));
     }
 
     public function save(Request $request)
     {
-        $request->validate([
+        $user = auth()->user();
+        $isGeneralBuyer = $user->role === 'umum';
+
+        $rules = [
             'provinsi_code'  => 'required',
             'provinsi_name'  => 'required',
             'kabupaten_code' => 'required',
@@ -34,24 +39,46 @@ class UserDetailController extends Controller
             'desa_code'      => 'required',
             'desa_name'      => 'required',
             'alamat_lengkap' => 'required|string',
-            'community_name' => 'required|string|max:255',
-            'username_ig'    => 'required|string|max:255',
-            'posisi'         => 'required|string|max:255',
-            'tanggal_lahir' => 'required|date',
-        ], [
+        ];
+
+        if ($isGeneralBuyer) {
+            $rules['name'] = 'required|string|max:100';
+            $rules['email'] = ['required', 'email', Rule::unique('users', 'email')->ignore($user->id)];
+            $rules['no_hp'] = 'required|string|min:10|max:15|regex:/^[0-9]+$/';
+        } else {
+            $rules['community_name'] = 'required|string|max:255';
+            $rules['username_ig'] = 'required|string|max:255';
+            $rules['posisi'] = 'required|string|max:255';
+            $rules['tanggal_lahir'] = 'required|date';
+        }
+
+        $request->validate($rules, [
             'provinsi_code.required'  => 'Provinsi wajib dipilih.',
             'kabupaten_code.required' => 'Kabupaten/Kota wajib dipilih.',
             'kecamatan_code.required' => 'Kecamatan wajib dipilih.',
             'desa_code.required'      => 'Desa/Kelurahan wajib dipilih.',
             'alamat_lengkap.required' => 'Alamat lengkap wajib diisi.',
+            'name.required' => 'Nama lengkap wajib diisi.',
+            'email.required' => 'Email wajib diisi.',
+            'email.unique' => 'Email sudah digunakan akun lain.',
+            'no_hp.required' => 'Nomor WhatsApp wajib diisi.',
+            'no_hp.regex' => 'Nomor WhatsApp hanya boleh berisi angka.',
             'tanggal_lahir.required' => 'Tanggal lahir wajib diisi.',
             'tanggal_lahir.date'     => 'Format tanggal lahir tidak valid.',
         ]);
 
+        if ($isGeneralBuyer) {
+            $user->update([
+                'name' => $request->name,
+                'email' => $request->email,
+                'no_hp' => $request->no_hp,
+            ]);
+        }
+
         UserDetail::updateOrCreate(
-            ['user_id' => auth()->id()],
+            ['user_id' => $user->id],
             [
-                'community_name' => $request->community_name,
+                'community_name' => $isGeneralBuyer ? null : $request->community_name,
                 'provinsi_code'  => $request->provinsi_code,
                 'provinsi_name'  => $request->provinsi_name,
                 'kabupaten_code' => $request->kabupaten_code,
@@ -60,10 +87,10 @@ class UserDetailController extends Controller
                 'kecamatan_name' => $request->kecamatan_name,
                 'desa_code'      => $request->desa_code,
                 'desa_name'      => $request->desa_name,
-                'username_ig'    => $request->username_ig,
-                'posisi'         => $request->posisi,
+                'username_ig'    => $isGeneralBuyer ? null : $request->username_ig,
+                'posisi'         => $isGeneralBuyer ? null : $request->posisi,
                 'alamat_lengkap' => $request->alamat_lengkap,
-                'tanggal_lahir'  => $request->tanggal_lahir,
+                'tanggal_lahir'  => $isGeneralBuyer ? null : $request->tanggal_lahir,
             ]
         );
 

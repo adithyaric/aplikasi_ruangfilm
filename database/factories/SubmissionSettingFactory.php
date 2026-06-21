@@ -30,6 +30,17 @@ class SubmissionSettingFactory extends Factory
             'last_year_description' => $this->faker->paragraph(),
             'last_year_catalog_label' => 'Download Katalog Festival',
             'last_year_catalog_url' => '/download/ekatalog',
+            'last_year_featured_film_ids' => [],
+            'last_year_catalog_file' => null,
+            'last_year_stat_film_submitted' => 285,
+            'last_year_stat_special_films' => 60,
+            'last_year_stat_audience' => 8000,
+            'last_year_stat_participants' => 62,
+            'timeline_items' => SubmissionSetting::defaultTimelineItems(
+                $openAt,
+                (clone $openAt)->addDays(7),
+                'Submission ' . now()->year
+            ),
             'open_at' => $openAt,
             'close_at' => (clone $openAt)->addDays(7),
         ];

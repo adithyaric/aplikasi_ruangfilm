@@ -16,7 +16,9 @@ use App\Http\Controllers\SubmissionReviewController;
 use App\Http\Controllers\SubmissionSettingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserDetailController;
+use App\Models\SubmissionSetting;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Laravolt\Indonesia\Models\Province;
 
 /*
@@ -49,22 +51,37 @@ Route::get('/ekshibisi/paud', function () {
     return view('landing.kategori.ekshibisis.paud');
 });
 Route::get('/download/ekatalog', function () {
+    $setting = SubmissionSetting::current();
+    $catalogFile = optional($setting)->last_year_catalog_file;
+    $legacyCatalogUrl = optional($setting)->last_year_catalog_url;
+
     \App\Models\DownloadLog::updateOrCreate(
         ['ip_address' => request()->ip()],
         [
-            'file'       => 'ekatalog-2025.pdf',
+            'file'       => basename($catalogFile ?: 'ekatalog-2025.pdf'),
             'user_agent' => request()->userAgent(),
             'user_id'    => auth()->id() ?? null,
         ]
     );
+
+    if ($catalogFile) {
+        return response()->download(storage_path('app/public/' . ltrim($catalogFile, '/')));
+    }
+
+    if ($legacyCatalogUrl) {
+        if (Str::startsWith($legacyCatalogUrl, ['http://', 'https://'])) {
+            return redirect()->away($legacyCatalogUrl);
+        }
+
+        return redirect(Str::startsWith($legacyCatalogUrl, '/') ? $legacyCatalogUrl : url($legacyCatalogUrl));
+    }
 
     $filePath = public_path('landing/pdf/ekatalog-2025.pdf');
     return response()->download($filePath);
 })->name('download.ekatalog');
 Route::get('/merchandise', [LandingController::class, 'merchandise'])->name('merchandise');
 Route::get('/merchandise/biodata', function () {
-    $provinsi = Province::orderBy('name')->get();
-    return view('landing.biodata', compact('provinsi'));
+    return redirect()->route('user-detail.index');
 });
 
 //? CRUD Pages :

@@ -72,7 +72,7 @@
                 <div class="box-body">
                     @if($order->payment_proof_path)
                     <p>
-                        <a href="{{ asset('storage/' . $order->payment_proof_path) }}" target="_blank" class="btn btn-info btn-sm">
+                        <a href="{{ $order->paymentProofUrl() }}" target="_blank" class="btn btn-info btn-sm">
                             Lihat Bukti Transfer
                         </a>
                     </p>

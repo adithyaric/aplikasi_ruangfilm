@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Order extends Model
 {
@@ -80,5 +82,48 @@ class Order extends Model
         return $this->status === static::STATUS_WAITING_PAYMENT
             && $this->payment_due_at
             && now()->lessThanOrEqualTo($this->payment_due_at);
+    }
+
+    public function normalizedPaymentProofPath()
+    {
+        $path = trim((string) $this->payment_proof_path);
+
+        if ($path === '' || Str::startsWith($path, ['http://', 'https://'])) {
+            return null;
+        }
+
+        if (Str::startsWith($path, 'storage/')) {
+            return ltrim(Str::after($path, 'storage/'), '/');
+        }
+
+        return ltrim($path, '/');
+    }
+
+    public function paymentProofUrl()
+    {
+        $path = trim((string) $this->payment_proof_path);
+
+        if ($path === '') {
+            return null;
+        }
+
+        if (Str::startsWith($path, ['http://', 'https://'])) {
+            return $path;
+        }
+
+        if (Str::startsWith($path, 'storage/')) {
+            return asset($path);
+        }
+
+        return asset('storage/' . ltrim($path, '/'));
+    }
+
+    public function deleteStoredPaymentProof()
+    {
+        $path = $this->normalizedPaymentProofPath();
+
+        if ($path) {
+            Storage::disk('public')->delete($path);
+        }
     }
 }

@@ -1,5 +1,8 @@
 @extends('layouts.landing.master')
 @section('main')
+@php
+    $detail = $user->detail;
+@endphp
 <main class="relative z-10">
     <section class="max-w-6xl mx-auto px-6 md:px-10 py-16">
         <div class="mb-8">
@@ -11,7 +14,85 @@
             @csrf
             <div class="space-y-8">
                 <div class="glass-card rounded-3xl p-6 md:p-8">
-                    <h2 class="text-xl font-semibold text-white">Alamat Pengiriman</h2>
+                    <h2 class="text-xl font-semibold text-white">{{ $isGeneralBuyer ? 'Biodata Pengiriman' : 'Alamat Pengiriman' }}</h2>
+
+                    @if($isGeneralBuyer)
+                    <div class="mt-5 space-y-5">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div class="field-group !mb-0">
+                                <label class="field-label">Nama Lengkap</label>
+                                <div class="input-icon-wrap">
+                                    <i class="fas fa-user"></i>
+                                    <input type="text" name="name" class="field-input" value="{{ old('name', $user->name) }}" required>
+                                </div>
+                            </div>
+                            <div class="field-group !mb-0">
+                                <label class="field-label">Email</label>
+                                <div class="input-icon-wrap">
+                                    <i class="fas fa-envelope"></i>
+                                    <input type="email" name="email" class="field-input" value="{{ old('email', $user->email) }}" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field-group !mb-0">
+                            <label class="field-label">Nomor WhatsApp</label>
+                            <div class="input-icon-wrap">
+                                <i class="fab fa-whatsapp"></i>
+                                <input type="text" name="no_hp" class="field-input" value="{{ old('no_hp', $user->no_hp) }}" required>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div class="field-group !mb-0">
+                                <label class="field-label">Provinsi</label>
+                                <select name="provinsi_code" id="provinsi" class="field-input" required>
+                                    <option value="">Pilih Provinsi</option>
+                                    @foreach($provinsi as $province)
+                                    <option value="{{ $province->code }}" data-name="{{ $province->name }}"
+                                        {{ old('provinsi_code', $detail->provinsi_code ?? '') == $province->code ? 'selected' : '' }}>
+                                        {{ $province->name }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                                <input type="hidden" name="provinsi_name" id="provinsi_name" value="{{ old('provinsi_name', $detail->provinsi_name ?? '') }}">
+                            </div>
+                            <div class="field-group !mb-0">
+                                <label class="field-label">Kabupaten / Kota</label>
+                                <select name="kabupaten_code" id="kabupaten" class="field-input" required>
+                                    <option value="">Pilih Kabupaten/Kota</option>
+                                </select>
+                                <input type="hidden" name="kabupaten_name" id="kabupaten_name" value="{{ old('kabupaten_name', $detail->kabupaten_name ?? '') }}">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div class="field-group !mb-0">
+                                <label class="field-label">Kecamatan</label>
+                                <select name="kecamatan_code" id="kecamatan" class="field-input" required>
+                                    <option value="">Pilih Kecamatan</option>
+                                </select>
+                                <input type="hidden" name="kecamatan_name" id="kecamatan_name" value="{{ old('kecamatan_name', $detail->kecamatan_name ?? '') }}">
+                            </div>
+                            <div class="field-group !mb-0">
+                                <label class="field-label">Desa / Kelurahan</label>
+                                <select name="desa_code" id="desa" class="field-input" required>
+                                    <option value="">Pilih Desa/Kelurahan</option>
+                                </select>
+                                <input type="hidden" name="desa_name" id="desa_name" value="{{ old('desa_name', $detail->desa_name ?? '') }}">
+                            </div>
+                        </div>
+
+                        <div class="field-group !mb-0">
+                            <label class="field-label">Alamat Lengkap</label>
+                            <textarea name="alamat_lengkap" class="field-input" rows="3" required>{{ old('alamat_lengkap', $detail->alamat_lengkap ?? '') }}</textarea>
+                        </div>
+
+                        <div class="pt-2">
+                            <a href="{{ route('user-detail.index') }}" class="text-purple-300 text-sm hover:text-purple-200">Kelola biodata pembeli di halaman khusus</a>
+                        </div>
+                    </div>
+                    @else
                     <div class="mt-5 space-y-3 text-sm text-gray-300">
                         <div><b>Nama:</b> {{ $user->name }}</div>
                         <div><b>Email:</b> {{ $user->email }}</div>
@@ -21,6 +102,7 @@
                     <div class="mt-5">
                         <a href="{{ route('user-detail.index') }}" class="text-purple-300 text-sm hover:text-purple-200">Perbarui biodata pengiriman</a>
                     </div>
+                    @endif
                 </div>
 
                 <div class="glass-card rounded-3xl p-6 md:p-8">
@@ -79,3 +161,41 @@
     </section>
 </main>
 @endsection
+
+@push('scripts')
+@if($isGeneralBuyer)
+<script>
+    const existingKabupaten = "{{ old('kabupaten_code', $detail->kabupaten_code ?? '') }}";
+    const existingKecamatan = "{{ old('kecamatan_code', $detail->kecamatan_code ?? '') }}";
+    const existingDesaCode = "{{ old('desa_code', $detail->desa_code ?? '') }}";
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectedProv = document.getElementById('provinsi')?.value;
+
+        if (selectedProv) {
+            loadKabupaten(selectedProv, existingKabupaten || null);
+        }
+
+        if (existingKabupaten) {
+            setTimeout(function() {
+                document.getElementById('kabupaten_name').value = document.querySelector('#kabupaten option:checked')?.textContent || '';
+                loadKecamatan(existingKabupaten, existingKecamatan || null);
+            }, 300);
+        }
+
+        if (existingKecamatan) {
+            setTimeout(function() {
+                document.getElementById('kecamatan_name').value = document.querySelector('#kecamatan option:checked')?.textContent || '';
+                loadDesa(existingKecamatan, existingDesaCode || null);
+            }, 600);
+        }
+
+        if (existingDesaCode) {
+            setTimeout(function() {
+                document.getElementById('desa_name').value = document.querySelector('#desa option:checked')?.textContent || '';
+            }, 900);
+        }
+    });
+</script>
+@endif
+@endpush

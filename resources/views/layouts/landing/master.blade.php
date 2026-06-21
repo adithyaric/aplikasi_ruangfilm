@@ -237,8 +237,12 @@
                 </a>
                 @if(auth()->check())
                 <a href="{{ route('orders.index') }}" class="nav-link text-gray-200 hover:text-purple-300 transition">Invoice</a>
+                @if(auth()->user()->role === 'umum')
+                <a href="{{ route('user-detail.index') }}" class="nav-link text-gray-200 hover:text-purple-300 transition">Biodata</a>
+                @else
                 <a href="{{ route('dashboard') }}"
                     class="btn-gradient px-5 py-2 rounded-full text-white text-sm font-semibold tracking-wide shadow-lg transition-all">Dashboard</a>
+                @endif
                 @else
                 <a href="{{ route('login') }}"
                     class="btn-gradient px-5 py-2 rounded-full text-white text-sm font-semibold tracking-wide shadow-lg transition-all">Login</a>
@@ -267,8 +271,12 @@
             <a href="{{ route('merchandise') }}" class="nav-link block py-2 text-gray-200 hover:text-purple-300">Merchandise</a>
             @if(auth()->check())
             <a href="{{ route('orders.index') }}" class="nav-link block py-2 text-gray-200 hover:text-purple-300">Invoice</a>
+            @if(auth()->user()->role === 'umum')
+            <a href="{{ route('user-detail.index') }}" class="nav-link block py-2 text-gray-200 hover:text-purple-300">Biodata</a>
+            @else
             <a href="{{ route('dashboard') }}"
                 class="btn-gradient inline-block text-center px-4 py-2 rounded-full text-white font-semibold">Dashboard</a>
+            @endif
             @else
             <a href="{{ route('login') }}"
                 class="btn-gradient inline-block text-center px-4 py-2 rounded-full text-white font-semibold">Login</a>
@@ -308,7 +316,13 @@
     <script>
         // Init Select2
         function initSelect2(selector, placeholder) {
-            $(selector).select2({
+            const element = $(selector);
+
+            if (!element.length || element.prop('tagName') !== 'SELECT') {
+                return;
+            }
+
+            element.select2({
                 placeholder: placeholder,
                 allowClear: true,
                 dropdownParent: $('body')

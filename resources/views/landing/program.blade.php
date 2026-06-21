@@ -20,7 +20,7 @@
                         KOMPETISI FILM
                     </h1>
                     <p class="text-gray-300 text-base md:text-xl max-w-2xl mx-auto font-light leading-relaxed">
-                        Timeline, kategori, dan tim penilai diambil langsung dari data periode submission dan user role yang aktif.
+                        Timeline kompetisi, kategori festival, dan tim penilai disiapkan untuk membantu peserta membaca keseluruhan alur program FFH 2026.
                     </p>
                 </div>
             </div>
@@ -99,23 +99,6 @@
         </div>
     </section>
 
-    <section class="max-w-7xl mx-auto px-6 md:px-10 py-24 md:py-28 faq-section">
-        <div class="fade-up">
-            <p class="text-purple-400 text-sm md:text-base uppercase tracking-wider font-semibold mb-2">
-                PERTANYAAN UMUM
-            </p>
-            <h2 class="text-3xl md:text-5xl font-bold text-left border-l-8 border-purple-500 pl-6 tracking-tight">
-                FAQ
-            </h2>
-        </div>
-
-        <div class="glass-card mt-8 rounded-3xl p-6 md:p-8 fade-up transition-all duration-500 hover:shadow-[0_0_30px_rgba(109,40,217,0.2)]">
-            <div class="max-w-3xl">
-                <p class="text-gray-300 leading-relaxed text-base md:text-lg">
-                    Admin membuka periode submission, peserta mendaftar sesuai kategori, kurator memfilter karya, lalu juri memberikan nilai dan menentukan pemenang. Semua data inti program sekarang ditarik dari database agar lebih mudah dikelola dari panel admin.
-                </p>
-            </div>
-        </div>
-    </section>
+    @include('landing.partials.program-faq')
 </main>
 @endsection
