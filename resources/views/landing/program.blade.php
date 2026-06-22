@@ -28,7 +28,10 @@
     </section>
 
     @include('layouts.landing.timeline-kompetisi-film', ['timelineItems' => $timelineItems])
-    @include('layouts.landing.kompetisi-film', ['competitionCategories' => $competitionCategories])
+    @include('layouts.landing.kompetisi-film', [
+        'competitionCategories' => $competitionCategories,
+        'showCompetitionSubmittedStat' => false,
+    ])
 
     <section class="max-w-7xl mx-auto px-6 md:px-10 py-24 md:py-28">
         <div class="fade-up">
@@ -37,7 +40,7 @@
             </h2>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
-            @forelse($juryMembers as $jury)
+            @forelse(collect($juryMembers ?? [])->take(3) as $jury)
             <div class="board-card glass-card-light rounded-2xl overflow-hidden transition-all text-center duration-300 group">
                 <div class="overflow-hidden relative">
                     <img
@@ -65,39 +68,7 @@
         </div>
     </section>
 
-    <section class="max-w-7xl mx-auto px-6 md:px-10 py-24 md:py-28">
-        <div class="fade-up">
-            <p class="text-purple-400 text-sm md:text-base uppercase tracking-wider font-semibold mb-2">
-                PROGRAM HIGHLIGHT
-            </p>
-            <h2 class="text-3xl md:text-5xl font-bold text-left border-l-8 border-purple-500 pl-6 tracking-tight">
-                Ruang Festival
-            </h2>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-12 fade-up">
-            @foreach([
-                ['icon' => '🏆', 'title' => 'Kompetisi', 'description' => 'Ruang apresiasi dan kurasi karya film dari seluruh kategori yang dibuka admin.'],
-                ['icon' => '📚', 'title' => 'Edukasi', 'description' => 'Workshop, diskusi, dan pertukaran praktik baik untuk peserta serta komunitas.'],
-                ['icon' => '🎭', 'title' => 'Eksperiens', 'description' => 'Program pemutaran dan pengalaman tematik yang menautkan film dengan ruang budaya.'],
-                ['icon' => '🌐', 'title' => 'Ekosistem', 'description' => 'Kolaborasi antara sineas, kurator, juri, komunitas, dan publik festival.'],
-            ] as $highlight)
-            <div class="group glass-card-light rounded-2xl p-6 flex flex-col items-center text-center gap-4 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_0_25px_rgba(109,40,217,0.2)] hover:border-purple-500/50">
-                <div class="w-14 h-14 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-2xl transition-transform duration-300 group-hover:scale-110">
-                    {{ $highlight['icon'] }}
-                </div>
-                <div>
-                    <h3 class="text-white font-bold text-lg mb-2 group-hover:text-purple-300 transition-colors duration-300">
-                        {{ $highlight['title'] }}
-                    </h3>
-                    <p class="text-gray-400 text-sm leading-relaxed">
-                        {{ $highlight['description'] }}
-                    </p>
-                </div>
-            </div>
-            @endforeach
-        </div>
-    </section>
+    @include('landing.partials.program-space-sections', ['landingSetting' => $landingSetting])
 
     @include('landing.partials.program-faq')
 </main>

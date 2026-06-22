@@ -358,25 +358,15 @@
                     <i class="fas fa-ghost text-purple-400/60"></i>
                 </div>
 
-                <div class="mt-12 pt-10 border-t border-purple-500/20">
-                    <div class="text-center space-y-4">
-                        <div class="text-5xl md:text-7xl font-black bg-gradient-to-r from-purple-400 via-fuchsia-400 to-purple-300 bg-clip-text text-transparent">
-                            <span id="competitionCounter" class="counter-value" data-target="{{ $specialFeatureStatValue }}">0</span>+
-                        </div>
-                        <p class="text-gray-300 text-sm md:text-base uppercase tracking-wider font-medium">
-                            Film Submitted
-                        </p>
-                        <div class="flex justify-center mt-6">
-                            <div class="w-20 h-[2px] bg-gradient-to-r from-transparent via-purple-500 to-transparent"></div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </section>
 
     @include('layouts.landing.timeline-kompetisi-film', ['timelineItems' => $timelineItems])
-    @include('layouts.landing.kompetisi-film', ['competitionCategories' => $competitionCategories])
+    @include('layouts.landing.kompetisi-film', [
+        'competitionCategories' => $competitionCategories,
+        'showCompetitionSubmittedStat' => true,
+    ])
     @include('landing.partials.home-merchandise-section', ['featuredMerchandises' => $featuredMerchandises])
     @elseif($hasClosedLandingPeriod)
     @include('landing.partials.program-highlight-section')

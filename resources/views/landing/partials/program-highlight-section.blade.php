@@ -11,9 +11,9 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-12 fade-up">
         @foreach([
             ['icon' => '🏆', 'title' => 'Kompetisi', 'description' => 'Ruang Apresiasi dan Kurasi Karya Film'],
-            ['icon' => '📚', 'title' => 'Edukasi', 'description' => 'Workshop, Diskusi, dan Pengembangan Talenta'],
-            ['icon' => '🎭', 'title' => 'Eksperiens', 'description' => 'Pengalaman Imersif Berbasis Budaya & Ruang'],
-            ['icon' => '🌐', 'title' => 'Ekosistem', 'description' => 'Kolaborasi, Jaringan, dan Keberlanjutan Industri'],
+            ['icon' => '📚', 'title' => 'Edukasi', 'description' => 'Workshop, Diskusi, dan Pengembangan Talenta.'],
+            ['icon' => '🎭', 'title' => 'Eksperiens', 'description' => 'Pengalaman Imersif Berbasis Budaya & Ruang.'],
+            ['icon' => '🌐', 'title' => 'Ekosistem', 'description' => 'Kolaborasi, Jaringan, dan Keberlanjutan Industri.'],
         ] as $highlight)
         <div class="group glass-card-light rounded-2xl p-6 flex flex-col items-center text-center gap-4 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_0_25px_rgba(109,40,217,0.2)] hover:border-purple-500/50">
             <div class="w-14 h-14 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-2xl transition-transform duration-300 group-hover:scale-110">

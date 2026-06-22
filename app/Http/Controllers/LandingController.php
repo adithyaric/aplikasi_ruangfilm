@@ -118,7 +118,7 @@ class LandingController extends Controller
             'lastYearFilms' => $lastYearFilms,
             'winnerGroups' => $winnerGroups,
             'festivalStats' => $festivalStats,
-            'specialFeatureStatValue' => $setting ? Film::where('submission_setting_id', $setting->id)->count() : 0,
+            'competitionFilmSubmittedStatValue' => (int) data_get($festivalStats->first(), 'value', 0),
         ];
     }
 
@@ -249,7 +249,7 @@ class LandingController extends Controller
             ],
             (object) [
                 'name' => 'Ekshibisi Lokal Pacitan',
-                'resolved_summary' => 'Kompetisi film horor bagi organisasi, komunitas lokal, serta pelajar SD - SMP di Pacitan.',
+                'resolved_summary' => "Kompetisi film horor bagi :\n- Organisasi (PKK - PAUD & TK, dan Karang Taruna) & Komunitas Lokal Pacitan\n- Pelajar SD - SMP Pacitan",
                 'image_url' => asset('landing/images/kategori/EKSIBISI.png'),
                 'resolved_detail_route' => '/ekshibisi',
             ],

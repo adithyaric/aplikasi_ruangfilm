@@ -76,5 +76,12 @@
             </div>
             @endforeach
         </div>
+
+        <div class="mt-8 pt-6 border-t border-purple-500/20 text-center">
+            <p class="text-gray-400 text-sm tracking-wide">
+                <i class="fas fa-envelope mr-2 text-purple-400"></i>
+                Masih memiliki pertanyaan lain? Hubungi tim festival melalui kontak resmi kami.
+            </p>
+        </div>
     </div>
 </section>

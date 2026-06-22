@@ -1,3 +1,7 @@
+@php
+    $showCompetitionSubmittedStat = $showCompetitionSubmittedStat ?? false;
+@endphp
+
 <!-- ================================================== -->
 <!-- SECTION: KOMPETISI FILM -->
 <!-- ================================================== -->
@@ -7,7 +11,7 @@
             FILM COMPETITION
         </p>
         <h2 class="text-3xl md:text-5xl font-bold text-left border-l-8 border-purple-500 pl-6 tracking-tight">
-            Kategori Kompetisi Film
+            Kompetisi Film
         </h2>
     </div>
 
@@ -30,8 +34,8 @@
                         <h3 class="text-xl md:text-2xl font-bold text-white mb-2 group-hover:text-purple-300 transition-colors duration-300">
                             {{ $category->name }}
                         </h3>
-                        <p class="text-gray-300 text-sm leading-relaxed mb-6">
-                            {{ $category->resolved_summary }}
+                        <p style="text-align: justify;" class="text-gray-300 text-sm leading-relaxed mb-6">
+                            {!! nl2br(e($category->resolved_summary)) !!}
                         </p>
                         <div class="mt-auto">
                             <a href="{{ $category->resolved_detail_route !== '#' ? url($category->resolved_detail_route) : '#' }}"
@@ -48,5 +52,21 @@
             </div>
             @endforelse
         </div>
+
+        @if($showCompetitionSubmittedStat)
+        <div class="mt-12 pt-10 border-t border-purple-500/20">
+            <div class="text-center space-y-4">
+                <div class="text-5xl md:text-7xl font-black bg-gradient-to-r from-purple-400 via-fuchsia-400 to-purple-300 bg-clip-text text-transparent">
+                    <span class="counter counter-value" data-target="{{ $competitionFilmSubmittedStatValue ?? 0 }}">{{ $competitionFilmSubmittedStatValue ?? 0 }}</span>+
+                </div>
+                <p class="text-gray-300 text-sm md:text-base uppercase tracking-wider font-medium">
+                    Film Submitted
+                </p>
+                <div class="flex justify-center mt-6">
+                    <div class="w-20 h-[2px] bg-gradient-to-r from-transparent via-purple-500 to-transparent"></div>
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
 </section>
