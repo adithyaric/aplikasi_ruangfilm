@@ -3,6 +3,7 @@
 namespace App\Services\Shipping;
 
 use App\Exceptions\ShippingException;
+use App\Models\AppSetting;
 use App\Models\Order;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
@@ -92,7 +93,7 @@ class RajaOngkirDeliveryService
 
     protected function buildOrderPayload(Order $order)
     {
-        $originDestinationId = trim((string) config('services.rajaongkir.origin_destination_id'));
+        $originDestinationId = trim((string) AppSetting::shippingOriginDestinationId());
         $shipper = (array) config('services.rajaongkir.shipper', []);
 
         if ($originDestinationId === '') {

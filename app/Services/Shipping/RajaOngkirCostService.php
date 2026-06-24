@@ -3,6 +3,7 @@
 namespace App\Services\Shipping;
 
 use App\Exceptions\ShippingException;
+use App\Models\AppSetting;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
@@ -38,7 +39,7 @@ class RajaOngkirCostService
 
     public function calculateDomesticCost($destinationId, $weight, array $couriers = null, $price = 'lowest')
     {
-        $originId = trim((string) config('services.rajaongkir.origin_destination_id'));
+        $originId = trim((string) AppSetting::shippingOriginDestinationId());
 
         if ($originId === '') {
             throw new ShippingException('Origin destination ID is missing.', 'Konfigurasi origin RajaOngkir belum lengkap.');

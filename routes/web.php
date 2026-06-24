@@ -145,6 +145,10 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('/expeditions/origin/laravolt-search', [ExpeditionController::class, 'searchLaravoltOrigin'])->name('expeditions.origin.laravolt-search');
+    Route::get('/expeditions/origin/rajaongkir-search', [ExpeditionController::class, 'searchRajaOngkirOrigin'])->name('expeditions.origin.rajaongkir-search');
+    Route::post('/expeditions/origin/laravolt', [ExpeditionController::class, 'updateOriginFromLaravolt'])->name('expeditions.origin.laravolt');
+    Route::post('/expeditions/origin/rajaongkir', [ExpeditionController::class, 'updateOriginFromRajaOngkir'])->name('expeditions.origin.rajaongkir');
     Route::resource('/merchandise-categories', MerchandiseCategoryController::class)->except('show');
     Route::resource('/admin-merchandises', AdminMerchandiseController::class)->except('show');
     Route::resource('/expeditions', ExpeditionController::class)->except('show');

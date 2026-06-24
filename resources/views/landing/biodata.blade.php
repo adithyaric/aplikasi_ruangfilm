@@ -182,14 +182,19 @@
                 </div>
 
                 <div class="flex flex-col md:flex-row gap-3 pt-2">
-                    <a href="{{ $isGeneralBuyer ? route('orders.index') : route('dashboard') }}"
+                    <button type="button"
+                        onclick="document.getElementById('biodata-logout-form').submit();"
                         class="px-5 py-3 rounded-xl border border-white/10 bg-white/5 text-gray-300 text-center font-semibold">
-                        Kembali
-                    </a>
+                        Logout
+                    </button>
                     <button type="submit" class="btn-submit">
                         Simpan Biodata
                     </button>
                 </div>
+            </form>
+
+            <form id="biodata-logout-form" action="{{ url('/logout') }}" method="POST" class="hidden">
+                @csrf
             </form>
         </div>
     </section>
