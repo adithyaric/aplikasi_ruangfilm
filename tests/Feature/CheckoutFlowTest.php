@@ -335,6 +335,29 @@ class CheckoutFlowTest extends TestCase
             ->assertSee($expectedUrl);
     }
 
+    public function test_order_detail_allows_owner_when_order_user_id_is_hydrated_as_string()
+    {
+        $user = User::factory()->role('umum')->create();
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+        ]);
+
+        $this->app['router']->bind('order', function ($value) {
+            $boundOrder = Order::findOrFail($value);
+
+            $boundOrder->setRawAttributes(array_merge($boundOrder->getAttributes(), [
+                'user_id' => (string) $boundOrder->getRawOriginal('user_id'),
+            ]), true);
+
+            return $boundOrder;
+        });
+
+        $this->actingAs($user)
+            ->get(route('orders.show', $order))
+            ->assertOk()
+            ->assertSee($order->invoice_number);
+    }
+
     public function test_overdue_order_is_expired_and_stock_is_restored()
     {
         $user = User::factory()->role('peserta')->create();

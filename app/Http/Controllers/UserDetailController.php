@@ -17,7 +17,7 @@ class UserDetailController extends Controller
     public function index()
     {
         $user = auth()->user()->load('detail', 'category');
-        $title = $user->role === 'umum' ? 'Biodata Pembeli' : 'Biodata Peserta';
+        $title = $user->isGeneralBuyer() ? 'Biodata Pembeli' : 'Biodata Peserta';
         $detail = $user->detail;
         $provinsi = Province::orderBy('name')->get();
 
@@ -27,7 +27,7 @@ class UserDetailController extends Controller
     public function save(Request $request)
     {
         $user = auth()->user();
-        $isGeneralBuyer = $user->role === 'umum';
+        $isGeneralBuyer = $user->isGeneralBuyer();
 
         $rules = [
             'provinsi_code'  => 'required',

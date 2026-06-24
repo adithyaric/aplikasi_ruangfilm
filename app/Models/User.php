@@ -6,6 +6,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -75,8 +76,38 @@ class User extends Authenticatable
         return $this->hasMany(JuryScore::class, 'jury_id');
     }
 
+    public function normalizedRole()
+    {
+        return Str::lower(trim((string) $this->role));
+    }
+
+    public function hasRole(...$roles)
+    {
+        $normalizedRole = $this->normalizedRole();
+
+        $allowedRoles = collect($roles)
+            ->flatten()
+            ->map(function ($role) {
+                return Str::lower(trim((string) $role));
+            })
+            ->filter()
+            ->values();
+
+        return $allowedRoles->contains($normalizedRole);
+    }
+
+    public function ownsUserId($userId)
+    {
+        $currentUserId = trim((string) $this->getAuthIdentifier());
+        $ownerUserId = trim((string) $userId);
+
+        return $currentUserId !== ''
+            && $ownerUserId !== ''
+            && $currentUserId === $ownerUserId;
+    }
+
     public function isGeneralBuyer()
     {
-        return $this->role === 'umum';
+        return $this->hasRole('umum');
     }
 }

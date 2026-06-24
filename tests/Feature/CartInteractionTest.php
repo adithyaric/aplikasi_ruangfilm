@@ -78,4 +78,46 @@ class CartInteractionTest extends TestCase
             'id' => $cartItem->id,
         ]);
     }
+
+    public function test_cart_update_allows_owner_when_cart_user_id_is_hydrated_as_string()
+    {
+        $user = User::factory()->role('umum')->create();
+        $cart = Cart::factory()->create([
+            'user_id' => $user->id,
+        ]);
+        $merchandise = Merchandise::factory()->create([
+            'price' => 50000,
+            'qty_stock' => 10,
+        ]);
+        $cartItem = CartItem::factory()->create([
+            'cart_id' => $cart->id,
+            'merchandise_id' => $merchandise->id,
+            'quantity' => 1,
+            'unit_price' => 50000,
+        ]);
+
+        $this->app['router']->bind('cartItem', function ($value) {
+            $boundCartItem = CartItem::with(['cart', 'merchandise'])->findOrFail($value);
+            $boundCart = $boundCartItem->cart;
+
+            $boundCart->setRawAttributes(array_merge($boundCart->getAttributes(), [
+                'user_id' => (string) $boundCart->getRawOriginal('user_id'),
+            ]), true);
+
+            $boundCartItem->setRelation('cart', $boundCart);
+
+            return $boundCartItem;
+        });
+
+        $this->actingAs($user)
+            ->putJson(route('cart.update', $cartItem), [
+                'quantity' => 3,
+            ])
+            ->assertOk()
+            ->assertJson([
+                'item_id' => $cartItem->id,
+                'item_quantity' => 3,
+                'cart_total_quantity' => 3,
+            ]);
+    }
 }

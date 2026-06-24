@@ -23,10 +23,8 @@ class CheckRole
             return redirect()->route('login');
         }
 
-        foreach ($roles as $role) {
-            if ($user->role == $role) {
-                return $next($request);
-            }
+        if ($user->hasRole($roles)) {
+            return $next($request);
         }
 
         return redirect()->route('dashboard')

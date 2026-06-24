@@ -117,7 +117,12 @@ class CartController extends Controller
 
     protected function authorizeCartItem(CartItem $cartItem)
     {
-        abort_unless($cartItem->cart && $cartItem->cart->user_id === auth()->id(), 403);
+        abort_unless(
+            $cartItem->cart
+                && auth()->user()
+                && auth()->user()->ownsUserId($cartItem->cart->user_id),
+            403
+        );
     }
 
     protected function cartErrorResponse(Request $request, $message, $status = 422)

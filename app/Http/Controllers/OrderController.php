@@ -37,7 +37,7 @@ class OrderController extends Controller
     public function uploadPaymentProof(Request $request, Order $order)
     {
         $this->expireOverdueOrders();
-        abort_unless($order->user_id === auth()->id(), 403);
+        abort_unless(auth()->user() && auth()->user()->ownsUserId($order->user_id), 403);
 
         if (!$order->canUploadProof()) {
             return back()->with('warning', 'Bukti transfer tidak dapat diunggah untuk invoice ini.');
@@ -184,7 +184,10 @@ class OrderController extends Controller
     {
         $allowedRoles = ['admin', 'adminsub'];
 
-        if ($order->user_id === auth()->id() || in_array(auth()->user()->role, $allowedRoles, true)) {
+        if (
+            (auth()->user() && auth()->user()->ownsUserId($order->user_id))
+            || auth()->user()->hasRole($allowedRoles)
+        ) {
             return;
         }
 

@@ -21,7 +21,7 @@ class SubmissionReviewController extends Controller
             $query->where('curation_status', $request->curation_status);
         }
 
-        if (auth()->user()->role === 'juri') {
+        if (auth()->user()->hasRole('juri')) {
             $query->where('curation_status', Film::CURATION_APPROVED);
         }
 
@@ -34,7 +34,7 @@ class SubmissionReviewController extends Controller
 
     public function updateCuration(Request $request, Film $film)
     {
-        abort_unless(in_array(auth()->user()->role, ['admin', 'adminsub', 'kurator'], true), 403);
+        abort_unless(auth()->user()->hasRole(['admin', 'adminsub', 'kurator']), 403);
 
         $validated = $request->validate([
             'curation_status' => 'required|in:pending,approved,rejected',
@@ -52,7 +52,7 @@ class SubmissionReviewController extends Controller
 
     public function updateJuryScore(Request $request, Film $film)
     {
-        abort_unless(in_array(auth()->user()->role, ['admin', 'adminsub', 'juri'], true), 403);
+        abort_unless(auth()->user()->hasRole(['admin', 'adminsub', 'juri']), 403);
 
         if ($film->curation_status !== Film::CURATION_APPROVED) {
             return back()->with('warning', 'Hanya submission yang lolos kurasi yang dapat dinilai juri.');

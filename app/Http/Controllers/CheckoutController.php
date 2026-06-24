@@ -30,7 +30,7 @@ class CheckoutController extends Controller
         }
 
         $user = auth()->user()->load('detail');
-        $isGeneralBuyer = $user->role === 'umum';
+        $isGeneralBuyer = $user->isGeneralBuyer();
 
         if (!$user->detail && !$isGeneralBuyer) {
             return redirect()->route('user-detail.index')
@@ -107,7 +107,7 @@ class CheckoutController extends Controller
     public function store(Request $request, RajaOngkirDestinationResolver $destinationResolver, RajaOngkirCostService $costService)
     {
         $user = auth()->user()->load('detail');
-        $isGeneralBuyer = $user->role === 'umum';
+        $isGeneralBuyer = $user->isGeneralBuyer();
 
         $rules = [
             'selected_shipping_option' => 'required|string',
@@ -278,7 +278,7 @@ class CheckoutController extends Controller
 
     protected function resolveShippingAddressData(Request $request, $user, $forQuote = false)
     {
-        $isGeneralBuyer = $user->role === 'umum';
+        $isGeneralBuyer = $user->isGeneralBuyer();
 
         if (!$isGeneralBuyer) {
             if (!$user->detail) {

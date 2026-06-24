@@ -21,7 +21,7 @@ class FilmController extends Controller
         $title = 'Submission';
         $categories = Category::orderBy('sort_order')->orderBy('name')->get();
 
-        if (in_array(auth()->user()->role, ['admin', 'adminsub'], true)) {
+        if (auth()->user()->hasRole(['admin', 'adminsub'])) {
             $films = Film::with(['user.category', 'category', 'submissionSetting'])->latest()->get();
         } else {
             $films = Film::with(['user.category', 'category', 'submissionSetting'])
@@ -173,7 +173,7 @@ class FilmController extends Controller
             return $redirect;
         }
 
-        if (in_array(auth()->user()->role, ['admin', 'adminsub'], true)) {
+        if (auth()->user()->hasRole(['admin', 'adminsub'])) {
             $film = Film::findOrFail($id);
         } else {
             $film = Film::where('id', $id)
@@ -192,7 +192,7 @@ class FilmController extends Controller
             return $redirect;
         }
 
-        if (in_array(auth()->user()->role, ['admin', 'adminsub'], true)) {
+        if (auth()->user()->hasRole(['admin', 'adminsub'])) {
             $film = Film::findOrFail($id);
         } else {
             $film = Film::where('id', $id)
@@ -300,7 +300,7 @@ class FilmController extends Controller
             return $redirect;
         }
 
-        if (in_array(auth()->user()->role, ['admin', 'adminsub'], true)) {
+        if (auth()->user()->hasRole(['admin', 'adminsub'])) {
             $film = Film::findOrFail($id);
         } else {
             $film = Film::where('id', $id)
@@ -375,7 +375,7 @@ class FilmController extends Controller
 
     protected function redirectGeneralBuyerAway()
     {
-        if (auth()->check() && auth()->user()->role === 'umum') {
+        if (auth()->check() && auth()->user()->isGeneralBuyer()) {
             return redirect()->route('merchandise')
                 ->with('warning', 'Akun umum tidak dapat mengakses halaman submission film.');
         }
