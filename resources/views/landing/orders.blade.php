@@ -18,6 +18,8 @@
                         <div class="text-white font-semibold">{{ $order->invoice_number }}</div>
                         <div class="text-sm text-gray-400 mt-1">{{ $order->created_at->translatedFormat('d F Y H:i') }} WIB</div>
                         <div class="text-sm text-gray-400 mt-1">Total: Rp {{ number_format($order->total, 0, ',', '.') }}</div>
+                        <div class="text-sm text-gray-400 mt-1">Pengiriman: {{ $order->shippingStatusText() }}</div>
+                        <div class="text-sm text-gray-400 mt-1">Resi: {{ $order->shipping_airway_bill ?? '-' }}</div>
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="px-3 py-1 rounded-full text-xs font-semibold border border-purple-500/30 bg-purple-500/10 text-purple-200">

@@ -65,6 +65,9 @@
                         <div><b>Kontak:</b> {{ $order->recipient_phone }}</div>
                         <div><b>Alamat:</b> {{ $order->full_address }}</div>
                         <div><b>Expedisi:</b> {{ trim($order->expedition_name . ' ' . $order->expedition_service_name) }}</div>
+                        <div><b>Estimasi:</b> {{ $order->shipping_etd ? $order->shipping_etd . ' hari' : '-' }}</div>
+                        <div><b>No. Resi:</b> {{ $order->shipping_airway_bill ?? '-' }}</div>
+                        <div><b>Status Pengiriman:</b> {{ $order->shippingStatusText() }}</div>
                     </div>
                 </div>
             </div>

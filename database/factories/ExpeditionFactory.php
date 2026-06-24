@@ -11,8 +11,11 @@ class ExpeditionFactory extends Factory
 
     public function definition()
     {
+        $name = $this->faker->randomElement(['JNE', 'J&T', 'SiCepat']);
+
         return [
-            'name' => $this->faker->randomElement(['JNE', 'J&T', 'SiCepat']),
+            'name' => $name,
+            'external_code' => $name === 'J&T' ? 'jnt' : strtolower(str_replace([' ', '&'], ['', ''], $name)),
             'service_name' => $this->faker->randomElement(['REG', 'YES', 'ECO']),
             'fee' => $this->faker->numberBetween(10000, 30000),
             'is_active' => true,

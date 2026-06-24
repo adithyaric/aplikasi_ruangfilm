@@ -16,6 +16,11 @@
                             <input type="text" name="name" class="form-control" value="{{ old('name', optional($expedition)->name) }}" required>
                         </div>
                         <div class="form-group">
+                            <label>Kode RajaOngkir</label>
+                            <input type="text" name="external_code" class="form-control" value="{{ old('external_code', optional($expedition)->external_code) }}" required>
+                            <p class="help-block">Contoh: <code>jne</code>, <code>jnt</code>, <code>sicepat</code>.</p>
+                        </div>
+                        <div class="form-group">
                             <label>Nama Layanan</label>
                             <input type="text" name="service_name" class="form-control" value="{{ old('service_name', optional($expedition)->service_name) }}">
                         </div>

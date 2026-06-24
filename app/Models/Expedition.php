@@ -11,6 +11,7 @@ class Expedition extends Model
 
     protected $fillable = [
         'name',
+        'external_code',
         'service_name',
         'fee',
         'is_active',

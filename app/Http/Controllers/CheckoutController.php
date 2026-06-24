@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ShippingException;
 use App\Models\AppSetting;
 use App\Models\Cart;
 use App\Models\Expedition;
 use App\Models\Order;
 use App\Models\UserDetail;
+use App\Services\Shipping\RajaOngkirCostService;
+use App\Services\Shipping\RajaOngkirCourierNormalizer;
+use App\Services\Shipping\RajaOngkirDestinationResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Laravolt\Indonesia\Models\Province;
 
 class CheckoutController extends Controller
@@ -34,20 +39,78 @@ class CheckoutController extends Controller
 
         return view('landing.checkout', [
             'cart' => $cart,
-            'expeditions' => Expedition::where('is_active', true)->orderBy('name')->get(),
             'user' => $user,
             'isGeneralBuyer' => $isGeneralBuyer,
             'provinsi' => $isGeneralBuyer ? Province::orderBy('name')->get() : collect(),
         ]);
     }
 
-    public function store(Request $request)
+    public function shippingOptions(Request $request, RajaOngkirDestinationResolver $destinationResolver, RajaOngkirCostService $costService)
+    {
+        $user = auth()->user()->load('detail');
+        $cart = Cart::with('items.merchandise')
+            ->firstOrCreate(['user_id' => $user->id]);
+
+        if ($cart->items->isEmpty()) {
+            return response()->json([
+                'message' => 'Keranjang Anda masih kosong.',
+                'errors' => ['cart' => ['Keranjang Anda masih kosong.']],
+            ], 422);
+        }
+
+        try {
+            $address = $this->resolveShippingAddressData($request, $user, true);
+            $destination = $destinationResolver->resolve($address);
+            $quotes = $this->getLiveShippingOptions(
+                $costService,
+                $destination['id'],
+                $this->calculateCartWeight($cart)
+            );
+        } catch (ValidationException $exception) {
+            return response()->json([
+                'message' => 'Data alamat belum lengkap.',
+                'errors' => $exception->errors(),
+            ], 422);
+        } catch (ShippingException $exception) {
+            return response()->json([
+                'message' => $exception->userMessage(),
+                'errors' => ['shipping' => [$exception->userMessage()]],
+            ], 422);
+        }
+
+        return response()->json([
+            'data' => [
+                'destination' => [
+                    'id' => $destination['id'],
+                    'label' => $destination['label'],
+                ],
+                'weight' => $this->calculateCartWeight($cart),
+                'groups' => collect($quotes)
+                    ->groupBy('courier_code')
+                    ->map(function ($items) {
+                        $first = $items->first();
+
+                        return [
+                            'courier_code' => $first['courier_code'],
+                            'courier_name' => $first['courier_name'],
+                            'expedition_id' => $first['expedition_id'],
+                            'expedition_name' => $first['expedition_name'],
+                            'options' => $items->values()->all(),
+                        ];
+                    })
+                    ->values()
+                    ->all(),
+            ],
+        ]);
+    }
+
+    public function store(Request $request, RajaOngkirDestinationResolver $destinationResolver, RajaOngkirCostService $costService)
     {
         $user = auth()->user()->load('detail');
         $isGeneralBuyer = $user->role === 'umum';
 
         $rules = [
-            'expedition_id' => 'required|exists:expeditions,id',
+            'selected_shipping_option' => 'required|string',
             'postal_code' => 'nullable|string|max:10',
             'notes' => 'nullable|string',
         ];
@@ -89,10 +152,6 @@ class CheckoutController extends Controller
                 ->with('warning', 'Keranjang Anda masih kosong.');
         }
 
-        $expedition = Expedition::where('id', $request->expedition_id)
-            ->where('is_active', true)
-            ->firstOrFail();
-
         $subtotal = 0;
 
         foreach ($cart->items as $item) {
@@ -111,13 +170,30 @@ class CheckoutController extends Controller
             $subtotal += $item->quantity * $merchandise->currentPrice();
         }
 
-        $order = DB::transaction(function () use ($cart, $expedition, $request, $user, $subtotal) {
+        try {
+            $address = $this->resolveShippingAddressData($request, $user);
+            $destination = $destinationResolver->resolve($address);
+            $quotes = $this->getLiveShippingOptions(
+                $costService,
+                $destination['id'],
+                $this->calculateCartWeight($cart)
+            );
+            $selectedQuote = $this->findSelectedQuote($quotes, $request->selected_shipping_option);
+        } catch (ShippingException $exception) {
+            throw ValidationException::withMessages([
+                'selected_shipping_option' => [$exception->userMessage()],
+            ]);
+        }
+
+        $order = DB::transaction(function () use ($cart, $request, $user, $subtotal, $selectedQuote, $destination) {
             $order = Order::create([
                 'invoice_number' => $this->generateInvoiceNumber(),
                 'user_id' => $user->id,
-                'expedition_id' => $expedition->id,
-                'expedition_name' => $expedition->name,
-                'expedition_service_name' => $expedition->service_name,
+                'expedition_id' => $selectedQuote['expedition_id'],
+                'expedition_name' => $selectedQuote['expedition_name'],
+                'expedition_code' => $selectedQuote['courier_code'],
+                'expedition_service_name' => $selectedQuote['service_name'],
+                'expedition_service_code' => $selectedQuote['service_code'],
                 'recipient_name' => $user->name,
                 'recipient_email' => $user->email,
                 'recipient_phone' => $user->no_hp,
@@ -126,11 +202,13 @@ class CheckoutController extends Controller
                 'district_name' => $user->detail->kecamatan_name,
                 'village_name' => $user->detail->desa_name,
                 'postal_code' => $request->postal_code,
+                'shipping_destination_id' => $destination['id'],
                 'full_address' => $user->detail->formatted_address,
                 'notes' => $request->notes,
-                'shipping_fee' => $expedition->fee,
+                'shipping_fee' => $selectedQuote['price'],
+                'shipping_etd' => $selectedQuote['etd'],
                 'subtotal' => $subtotal,
-                'total' => $subtotal + $expedition->fee,
+                'total' => $subtotal + $selectedQuote['price'],
                 'status' => Order::STATUS_WAITING_PAYMENT,
                 'payment_due_at' => now()->addHours(AppSetting::paymentDueHours()),
             ]);
@@ -195,6 +273,123 @@ class CheckoutController extends Controller
                 'alamat_lengkap' => $request->alamat_lengkap,
                 'tanggal_lahir' => null,
             ]
+        );
+    }
+
+    protected function resolveShippingAddressData(Request $request, $user, $forQuote = false)
+    {
+        $isGeneralBuyer = $user->role === 'umum';
+
+        if (!$isGeneralBuyer) {
+            if (!$user->detail) {
+                throw ValidationException::withMessages([
+                    'address' => ['Lengkapi biodata pengiriman terlebih dahulu.'],
+                ]);
+            }
+
+            return [
+                'provinsi_name' => $user->detail->provinsi_name,
+                'kabupaten_name' => $user->detail->kabupaten_name,
+                'kecamatan_name' => $user->detail->kecamatan_name,
+                'desa_name' => $user->detail->desa_name,
+                'postal_code' => $request->postal_code,
+            ];
+        }
+
+        $data = [
+            'provinsi_code' => $request->input('provinsi_code', optional($user->detail)->provinsi_code),
+            'provinsi_name' => $request->input('provinsi_name', optional($user->detail)->provinsi_name),
+            'kabupaten_code' => $request->input('kabupaten_code', optional($user->detail)->kabupaten_code),
+            'kabupaten_name' => $request->input('kabupaten_name', optional($user->detail)->kabupaten_name),
+            'kecamatan_code' => $request->input('kecamatan_code', optional($user->detail)->kecamatan_code),
+            'kecamatan_name' => $request->input('kecamatan_name', optional($user->detail)->kecamatan_name),
+            'desa_code' => $request->input('desa_code', optional($user->detail)->desa_code),
+            'desa_name' => $request->input('desa_name', optional($user->detail)->desa_name),
+            'postal_code' => $request->postal_code,
+        ];
+
+        if ($forQuote) {
+            validator($data, [
+                'provinsi_code' => 'required',
+                'provinsi_name' => 'required',
+                'kabupaten_code' => 'required',
+                'kabupaten_name' => 'required',
+                'kecamatan_code' => 'required',
+                'kecamatan_name' => 'required',
+                'desa_code' => 'required',
+                'desa_name' => 'required',
+            ])->validate();
+        }
+
+        return $data;
+    }
+
+    protected function calculateCartWeight(Cart $cart)
+    {
+        $weight = (int) $cart->items->sum(function ($item) {
+            return $item->quantity * (int) optional($item->merchandise)->weight;
+        });
+
+        return max(1, $weight);
+    }
+
+    protected function getLiveShippingOptions(RajaOngkirCostService $costService, $destinationId, $weight)
+    {
+        $expeditions = Expedition::where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->keyBy(function ($expedition) {
+                return RajaOngkirCourierNormalizer::normalize(
+                    $expedition->external_code ?: $expedition->name
+                );
+            })
+            ->filter(function ($expedition, $code) {
+                return $code !== '';
+            });
+
+        if ($expeditions->isEmpty()) {
+            throw new ShippingException('No active RajaOngkir couriers configured.', 'Belum ada kurir aktif yang terhubung ke RajaOngkir.');
+        }
+
+        $quotes = collect($costService->calculateDomesticCost($destinationId, $weight, $expeditions->keys()->all()))
+            ->filter(function ($quote) use ($expeditions) {
+                return $expeditions->has($quote['courier_code']);
+            })
+            ->map(function ($quote) use ($expeditions) {
+                $expedition = $expeditions->get($quote['courier_code']);
+
+                return array_merge($quote, [
+                    'expedition_id' => $expedition->id,
+                    'expedition_name' => $expedition->name,
+                    'courier_name' => $expedition->name ?: $quote['courier_name'],
+                ]);
+            })
+            ->sortBy(function ($quote) {
+                return $quote['price'];
+            })
+            ->values()
+            ->all();
+
+        if (empty($quotes)) {
+            throw new ShippingException('No shipping quotes available.', 'Tidak ada layanan pengiriman yang tersedia untuk alamat ini.');
+        }
+
+        return $quotes;
+    }
+
+    protected function findSelectedQuote(array $quotes, $selectedQuoteId)
+    {
+        $selectedQuoteId = strtolower(trim((string) $selectedQuoteId));
+
+        foreach ($quotes as $quote) {
+            if (strtolower((string) $quote['quote_id']) === $selectedQuoteId) {
+                return $quote;
+            }
+        }
+
+        throw new ShippingException(
+            'Selected quote was not found in live RajaOngkir options.',
+            'Pilihan layanan pengiriman sudah tidak tersedia. Silakan pilih ulang ongkir.'
         );
     }
 }

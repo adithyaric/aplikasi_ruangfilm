@@ -388,9 +388,9 @@ class DatabaseSeeder extends Seeder
         }
 
         foreach ([
-            ['name' => 'JNE', 'service_name' => 'REG', 'fee' => 15000, 'is_active' => true],
-            ['name' => 'J&T', 'service_name' => 'REG', 'fee' => 18000, 'is_active' => true],
-            ['name' => 'SiCepat', 'service_name' => 'BEST', 'fee' => 20000, 'is_active' => true],
+            ['name' => 'JNE', 'external_code' => 'jne', 'service_name' => 'REG', 'fee' => 15000, 'is_active' => true],
+            ['name' => 'J&T', 'external_code' => 'jnt', 'service_name' => 'REG', 'fee' => 18000, 'is_active' => true],
+            ['name' => 'SiCepat', 'external_code' => 'sicepat', 'service_name' => 'BEST', 'fee' => 20000, 'is_active' => true],
         ] as $expedition) {
             Expedition::updateOrCreate(
                 ['name' => $expedition['name'], 'service_name' => $expedition['service_name']],

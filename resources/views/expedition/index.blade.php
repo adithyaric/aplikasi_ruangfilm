@@ -16,6 +16,7 @@
                             <tr>
                                 <th>No</th>
                                 <th>Nama</th>
+                                <th>Kode RajaOngkir</th>
                                 <th>Layanan</th>
                                 <th>Biaya</th>
                                 <th>Status</th>
@@ -27,6 +28,7 @@
                             <tr>
                                 <td>{{ $loop->iteration }}</td>
                                 <td>{{ $expedition->name }}</td>
+                                <td><code>{{ $expedition->external_code ?? '-' }}</code></td>
                                 <td>{{ $expedition->service_name ?? '-' }}</td>
                                 <td>@currency($expedition->fee)</td>
                                 <td>{{ $expedition->is_active ? 'Aktif' : 'Nonaktif' }}</td>

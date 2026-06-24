@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ShippingException;
 use App\Models\BankAccount;
 use App\Models\Merchandise;
 use App\Models\Order;
+use App\Services\Shipping\RajaOngkirDeliveryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -101,6 +103,56 @@ class OrderController extends Controller
         ]);
 
         return back()->with('success', 'Pembayaran berhasil diverifikasi.');
+    }
+
+    public function createShipment(Order $order, RajaOngkirDeliveryService $deliveryService)
+    {
+        if (!config('services.rajaongkir.komship_enabled')) {
+            return back()->with('warning', 'Fitur Komship sedang dinonaktifkan pada environment ini.');
+        }
+
+        if ($order->status !== Order::STATUS_PAID) {
+            return back()->with('warning', 'Shipment hanya bisa dibuat setelah pembayaran berstatus paid.');
+        }
+
+        if ($order->hasShipment()) {
+            return back()->with('warning', 'Shipment untuk invoice ini sudah pernah dibuat.');
+        }
+
+        try {
+            $payload = $deliveryService->createShipment($order->load('items'));
+        } catch (ShippingException $exception) {
+            return back()->with('warning', $exception->userMessage());
+        }
+
+        $order->update(array_merge($payload, [
+            'shipping_synced_at' => now(),
+        ]));
+
+        return back()->with('success', 'Shipment berhasil dibuat dan nomor order Komship sudah tersimpan.');
+    }
+
+    public function syncShipment(Order $order, RajaOngkirDeliveryService $deliveryService)
+    {
+        if (!config('services.rajaongkir.komship_enabled')) {
+            return back()->with('warning', 'Fitur Komship sedang dinonaktifkan pada environment ini.');
+        }
+
+        if (!$order->hasShipment()) {
+            return back()->with('warning', 'Shipment belum dibuat untuk invoice ini.');
+        }
+
+        try {
+            $payload = $deliveryService->syncShipment($order);
+        } catch (ShippingException $exception) {
+            return back()->with('warning', $exception->userMessage());
+        }
+
+        $order->update(array_merge($payload, [
+            'shipping_synced_at' => now(),
+        ]));
+
+        return back()->with('success', 'Data shipment berhasil disinkronkan.');
     }
 
     public function reject(Request $request, Order $order)

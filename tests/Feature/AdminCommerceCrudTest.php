@@ -31,6 +31,7 @@ class AdminCommerceCrudTest extends TestCase
         $this->actingAs($admin)
             ->post(route('expeditions.store'), [
                 'name' => 'JNE',
+                'external_code' => 'jne',
                 'service_name' => 'REG',
                 'fee' => 15000,
                 'is_active' => 1,
@@ -64,7 +65,7 @@ class AdminCommerceCrudTest extends TestCase
             ->assertRedirect(route('admin-merchandises.index'));
 
         $this->assertDatabaseHas('merchandise_categories', ['name' => 'Merch Category']);
-        $this->assertDatabaseHas('expeditions', ['name' => 'JNE', 'service_name' => 'REG']);
+        $this->assertDatabaseHas('expeditions', ['name' => 'JNE', 'external_code' => 'jne', 'service_name' => 'REG']);
         $this->assertDatabaseHas('bank_accounts', ['rek_bank_name' => 'BCA']);
         $this->assertDatabaseHas('merchandises', ['name' => 'Official T-Shirt']);
         Storage::disk('public')->assertExists(\App\Models\Merchandise::first()->image);

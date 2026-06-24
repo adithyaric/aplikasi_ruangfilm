@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Expedition;
+use App\Services\Shipping\RajaOngkirCourierNormalizer;
 use Illuminate\Http\Request;
 
 class ExpeditionController extends Controller
@@ -63,11 +64,16 @@ class ExpeditionController extends Controller
 
     protected function validateRequest(Request $request)
     {
-        return $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'external_code' => 'required|string|max:100',
             'service_name' => 'nullable|string|max:255',
             'fee' => 'required|numeric|min:0',
             'is_active' => 'nullable|boolean',
         ]);
+
+        $validated['external_code'] = RajaOngkirCourierNormalizer::normalize($validated['external_code']);
+
+        return $validated;
     }
 }
