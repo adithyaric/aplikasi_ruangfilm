@@ -152,4 +152,41 @@ class AdminShipmentFlowTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('warning', 'Fitur Komship sedang dinonaktifkan pada environment ini.');
     }
+
+    public function test_admin_can_update_airway_bill_without_touching_other_shipment_identifiers()
+    {
+        $admin = User::factory()->role('admin')->create();
+        $buyer = User::factory()->role('peserta')->create();
+        $order = Order::factory()->create([
+            'user_id' => $buyer->id,
+            'status' => Order::STATUS_PAID,
+            'shipping_order_no' => 'KOM202606230001',
+            'shipping_airway_bill' => 'AWB-OLD-001',
+            'shipping_status' => Order::SHIPPING_STATUS_IN_TRANSIT,
+            'shipping_status_label' => 'In Transit',
+            'shipping_tracking_payload' => [
+                'detail' => ['cnote' => 'AWB-OLD-001'],
+                'history' => ['old' => true],
+                'histories' => [['status_label' => 'In Transit']],
+            ],
+            'shipping_synced_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.orders.show', $order))
+            ->patch(route('admin.orders.airway-bill.update', $order), [
+                'shipping_airway_bill' => 'AWB-NEW-123',
+            ])
+            ->assertRedirect(route('admin.orders.show', $order))
+            ->assertSessionHas('success', 'Nomor resi berhasil diperbarui.');
+
+        $order->refresh();
+
+        $this->assertSame('KOM202606230001', $order->shipping_order_no);
+        $this->assertSame('AWB-NEW-123', $order->shipping_airway_bill);
+        $this->assertSame(Order::SHIPPING_STATUS_IN_TRANSIT, $order->shipping_status);
+        $this->assertSame('In Transit', $order->shipping_status_label);
+        $this->assertNull($order->shipping_tracking_payload);
+        $this->assertNull($order->shipping_synced_at);
+    }
 }

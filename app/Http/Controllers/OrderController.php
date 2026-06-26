@@ -43,7 +43,7 @@ class OrderController extends Controller
             return back()->with('warning', 'Bukti transfer tidak dapat diunggah untuk invoice ini.');
         }
 
-        $request->validate([
+        $request->validateWithBag('uploadPaymentProof', [
             'payment_proof' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
@@ -153,6 +153,36 @@ class OrderController extends Controller
         ]));
 
         return back()->with('success', 'Data shipment berhasil disinkronkan.');
+    }
+
+    public function updateAirwayBill(Request $request, Order $order)
+    {
+        $validated = $request->validateWithBag('updateAirwayBill', [
+            'shipping_airway_bill' => 'required|string|max:100',
+        ]);
+
+        $airwayBill = trim((string) $validated['shipping_airway_bill']);
+
+        if ($airwayBill === '') {
+            return back()
+                ->withErrors([
+                    'shipping_airway_bill' => 'Nomor resi wajib diisi.',
+                ], 'updateAirwayBill')
+                ->withInput();
+        }
+
+        $updates = [
+            'shipping_airway_bill' => $airwayBill,
+        ];
+
+        if ($airwayBill !== trim((string) $order->shipping_airway_bill)) {
+            $updates['shipping_tracking_payload'] = null;
+            $updates['shipping_synced_at'] = null;
+        }
+
+        $order->update($updates);
+
+        return back()->with('success', 'Nomor resi berhasil diperbarui.');
     }
 
     public function reject(Request $request, Order $order)

@@ -1,5 +1,6 @@
 @extends('layouts.landing.master')
 @section('main')
+@php($hasPaymentProofError = $errors->uploadPaymentProof->has('payment_proof'))
 <main class="relative z-10">
     <section class="max-w-6xl mx-auto px-6 md:px-10 py-16">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
@@ -33,13 +34,30 @@
 
             <div class="space-y-8">
                 <div class="glass-card rounded-3xl p-6 md:p-8">
+                    <h2 class="text-xl font-semibold text-white">Rekening Pembayaran</h2>
+                    <div class="mt-5 space-y-4">
+                        @forelse($bankAccounts as $bankAccount)
+                        <div class="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
+                            <div class="text-white font-semibold">{{ $bankAccount->rek_bank_name }}</div>
+                            <div class="text-gray-300 text-sm mt-1">{{ $bankAccount->rek_bank_no }}</div>
+                            <div class="text-gray-400 text-sm mt-1">a.n. {{ $bankAccount->rek_name }}</div>
+                        </div>
+                        @empty
+                        <div class="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-5 py-4 text-yellow-200 text-sm">
+                            Belum ada rekening pembayaran yang aktif.
+                        </div>
+                        @endforelse
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-3xl p-6 md:p-8">
                     <h2 class="text-xl font-semibold text-white">Status Pembayaran</h2>
                     <div class="mt-5 space-y-3 text-sm text-gray-300">
                         <div><b>Status:</b> {{ strtoupper(str_replace('_', ' ', $order->status)) }}</div>
                         <div><b>Batas Pembayaran:</b> {{ optional($order->payment_due_at)->translatedFormat('d F Y H:i') ?? '-' }} WIB</div>
                         <div><b>Subtotal:</b> Rp {{ number_format($order->subtotal, 0, ',', '.') }}</div>
-                    <div><b>Ongkir:</b> Rp {{ number_format($order->shipping_fee, 0, ',', '.') }}</div>
-                    <div class="text-white font-semibold"><b>Total:</b> Rp {{ number_format($order->total, 0, ',', '.') }}</div>
+                        <div><b>Ongkir:</b> Rp {{ number_format($order->shipping_fee, 0, ',', '.') }}</div>
+                        <div class="text-white font-semibold"><b>Total:</b> Rp {{ number_format($order->total, 0, ',', '.') }}</div>
                     </div>
                     @if($order->payment_proof_path)
                     <a href="{{ $order->paymentProofUrl() }}" target="_blank" class="mt-5 inline-flex text-purple-300 text-sm hover:text-purple-200">
@@ -74,41 +92,42 @@
         </div>
     </section>
 
-    <div id="payment-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-black/70 px-4">
-        <div class="w-full max-w-2xl rounded-3xl border border-purple-500/20 bg-[#111126] p-6 md:p-8">
+    <div id="payment-modal" class="fixed inset-0 z-[80] {{ $hasPaymentProofError ? 'flex' : 'hidden' }} items-center justify-center bg-black/70 px-4 py-6 overflow-y-auto">
+        <div class="w-full max-w-xl rounded-3xl border border-purple-500/20 bg-[#111126] p-6 md:p-8 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <p class="text-purple-400 text-sm uppercase tracking-wider font-semibold mb-1">Pembayaran Manual</p>
                     <h2 class="text-2xl font-bold text-white">Upload Bukti Transfer</h2>
+                    <p class="mt-2 text-sm text-gray-400">Unggah file JPG, PNG, atau PDF setelah transfer selesai.</p>
                 </div>
                 <button type="button" id="close-payment-modal" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
             </div>
 
-            <div class="mt-6 space-y-4">
-                @forelse($bankAccounts as $bankAccount)
-                <div class="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
-                    <div class="text-white font-semibold">{{ $bankAccount->rek_bank_name }}</div>
-                    <div class="text-gray-300 text-sm mt-1">{{ $bankAccount->rek_bank_no }}</div>
-                    <div class="text-gray-400 text-sm mt-1">a.n. {{ $bankAccount->rek_name }}</div>
-                </div>
-                @empty
-                <div class="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-5 py-4 text-yellow-200 text-sm">
-                    Belum ada rekening pembayaran yang aktif.
-                </div>
-                @endforelse
+            <div class="mt-6 rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
+                <div class="text-sm text-gray-400">Total Transfer</div>
+                <div class="mt-1 text-xl font-semibold text-white">Rp {{ number_format($order->total, 0, ',', '.') }}</div>
             </div>
 
             @if($order->canUploadProof())
             <form action="{{ route('orders.payment-proof', $order) }}" method="POST" enctype="multipart/form-data" class="mt-6">
                 @csrf
                 <label class="text-sm text-gray-300">Bukti Transfer</label>
-                <input type="file" name="payment_proof" required
+                <input type="file" name="payment_proof" accept=".jpg,.jpeg,.png,.pdf" required
                     class="mt-2 w-full rounded-2xl bg-white/5 border border-purple-500/20 px-4 py-3 text-white">
+                @if($hasPaymentProofError)
+                <div class="mt-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-200 text-sm">
+                    {{ $errors->uploadPaymentProof->first('payment_proof') }}
+                </div>
+                @endif
                 <button type="submit"
                     class="mt-5 w-full h-11 rounded-xl bg-gradient-to-r from-purple-700 to-purple-500 text-white text-sm font-semibold flex items-center justify-center gap-2">
                     Kirim Bukti Transfer
                 </button>
             </form>
+            @else
+            <div class="mt-6 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-5 py-4 text-yellow-200 text-sm">
+                Upload bukti transfer sudah tidak tersedia untuk invoice ini.
+            </div>
             @endif
         </div>
     </div>
@@ -121,21 +140,44 @@
     const closePaymentModal = document.getElementById('close-payment-modal');
     const paymentModal = document.getElementById('payment-modal');
 
-    if (openPaymentModal && closePaymentModal && paymentModal) {
-        openPaymentModal.addEventListener('click', function() {
+    if (paymentModal) {
+        const showPaymentModal = function() {
             paymentModal.classList.remove('hidden');
             paymentModal.classList.add('flex');
-        });
+            document.body.classList.add('overflow-hidden');
+        };
 
-        closePaymentModal.addEventListener('click', function() {
+        const hidePaymentModal = function() {
             paymentModal.classList.add('hidden');
             paymentModal.classList.remove('flex');
-        });
+            document.body.classList.remove('overflow-hidden');
+        };
+
+        if (!paymentModal.classList.contains('hidden')) {
+            document.body.classList.add('overflow-hidden');
+        }
+
+        if (openPaymentModal) {
+            openPaymentModal.addEventListener('click', function() {
+                showPaymentModal();
+            });
+        }
+
+        if (closePaymentModal) {
+            closePaymentModal.addEventListener('click', function() {
+                hidePaymentModal();
+            });
+        }
 
         paymentModal.addEventListener('click', function(event) {
             if (event.target === paymentModal) {
-                paymentModal.classList.add('hidden');
-                paymentModal.classList.remove('flex');
+                hidePaymentModal();
+            }
+        });
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && !paymentModal.classList.contains('hidden')) {
+                hidePaymentModal();
             }
         });
     }

@@ -161,6 +161,7 @@ Route::middleware(['auth', 'role:admin,adminsub'])->group(function () {
     Route::get('/admin/orders/{order}', [OrderController::class, 'adminShow'])->name('admin.orders.show');
     Route::post('/admin/orders/{order}/verify', [OrderController::class, 'verify'])->name('admin.orders.verify');
     Route::post('/admin/orders/{order}/reject', [OrderController::class, 'reject'])->name('admin.orders.reject');
+    Route::patch('/admin/orders/{order}/airway-bill', [OrderController::class, 'updateAirwayBill'])->name('admin.orders.airway-bill.update');
     Route::post('/admin/orders/{order}/shipment', [OrderController::class, 'createShipment'])->name('admin.orders.shipment.store');
     Route::post('/admin/orders/{order}/shipment/sync', [OrderController::class, 'syncShipment'])->name('admin.orders.shipment.sync');
 });

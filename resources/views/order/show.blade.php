@@ -11,7 +11,7 @@
                     <p><b>Pembeli:</b> {{ $order->recipient_name }} ({{ $order->recipient_phone }})</p>
                     <p><b>Alamat:</b> {{ $order->full_address }}</p>
                     <p><b>Expedisi:</b> {{ trim($order->expedition_name . ' ' . $order->expedition_service_name) }}</p>
-                    <p><b>Estimasi:</b> {{ $order->shipping_etd ? $order->shipping_etd . ' hari' : '-' }}</p>
+                    {{-- <p><b>Estimasi:</b> {{ $order->shipping_etd ? $order->shipping_etd . ' hari' : '-' }}</p> --}}
                     <p><b>Status:</b> {{ strtoupper(str_replace('_', ' ', $order->status)) }}</p>
                     <p><b>Batas Bayar:</b> {{ optional($order->payment_due_at)->translatedFormat('d F Y H:i') ?? '-' }} WIB</p>
                     @if($order->notes)
@@ -118,44 +118,60 @@
 
                     <hr>
                     <h4><b>Shipment</b></h4>
-                    <p><b>Order Komship:</b> {{ $order->shipping_order_no ?? '-' }}</p>
+                    {{-- <p><b>Order Komship:</b> {{ $order->shipping_order_no ?? '-' }}</p> --}}
                     <p><b>No. Resi:</b> {{ $order->shipping_airway_bill ?? '-' }}</p>
-                    <p><b>Status Pengiriman:</b> {{ $order->shippingStatusText() }}</p>
-                    <p><b>Sync Terakhir:</b> {{ optional($order->shipping_synced_at)->translatedFormat('d F Y H:i') ?? '-' }} WIB</p>
-
-                    @if(!config('services.rajaongkir.komship_enabled'))
-                    <div class="alert alert-info" style="margin-top:12px;">
-                        Fitur Komship sedang dinonaktifkan. Aktifkan <code>RAJAONGKIR_KOMSHIP_ENABLED=true</code> jika paket shipment ingin dipakai.
-                    </div>
-                    @endif
-
-                    @if(config('services.rajaongkir.komship_enabled') && $order->status === \App\Models\Order::STATUS_PAID && !$order->hasShipment())
-                    <form action="{{ route('admin.orders.shipment.store', $order) }}" method="POST" style="margin-top:12px;">
+                    <form action="{{ route('admin.orders.airway-bill.update', $order) }}" method="POST" style="margin-top:12px;">
                         @csrf
-                        <button type="submit" class="btn btn-primary btn-block">Buat Shipment Komship</button>
+                        @method('PATCH')
+                        <div class="form-group">
+                            <label>Ubah No. Resi</label>
+                            <input type="text" name="shipping_airway_bill" class="form-control"
+                                value="{{ old('shipping_airway_bill', $order->shipping_airway_bill) }}" required>
+                            @if($errors->updateAirwayBill->has('shipping_airway_bill'))
+                            <small class="text-danger">{{ $errors->updateAirwayBill->first('shipping_airway_bill') }}</small>
+                            @endif
+                            <p class="help-block" style="margin-bottom:0;">
+                                Mengubah resi akan mengosongkan data tracking tersimpan agar sinkronisasi berikutnya pakai resi terbaru.
+                            </p>
+                        </div>
+                        <button type="submit" class="btn btn-warning btn-block">Simpan No. Resi</button>
                     </form>
-                    @endif
+                    {{-- <p><b>Status Pengiriman:</b> {{ $order->shippingStatusText() }}</p> --}}
+                    {{-- <p><b>Sync Terakhir:</b> {{ optional($order->shipping_synced_at)->translatedFormat('d F Y H:i') ?? '-' }} WIB</p> --}}
 
-                    @if(config('services.rajaongkir.komship_enabled') && $order->hasShipment())
-                    <form action="{{ route('admin.orders.shipment.sync', $order) }}" method="POST" style="margin-top:12px;">
-                        @csrf
-                        <button type="submit" class="btn btn-info btn-block">Sinkronkan Tracking</button>
-                    </form>
-                    @endif
-
-                    @if($order->shippingTrackingEvents()->isNotEmpty())
-                    <hr>
-                    <h4><b>Riwayat Tracking</b></h4>
-                    <ul class="list-unstyled" style="margin-bottom:0;">
-                        @foreach($order->shippingTrackingEvents() as $event)
-                        <li style="padding:10px 0; border-bottom:1px solid #eee;">
-                            <div><b>{{ $event['status_label'] ?? '-' }}</b></div>
-                            <div>{{ $event['description'] ?? '-' }}</div>
-                            <small class="text-muted">{{ trim(($event['date'] ?? '') . ' ' . ($event['location'] ?? '')) ?: '-' }}</small>
-                        </li>
-                        @endforeach
-                    </ul>
-                    @endif
+                    {{-- @if(!config('services.rajaongkir.komship_enabled')) --}}
+                    {{-- <div class="alert alert-info" style="margin-top:12px;"> --}}
+                        {{-- Fitur Komship sedang dinonaktifkan. Aktifkan <code>RAJAONGKIR_KOMSHIP_ENABLED=true</code> jika paket shipment ingin dipakai. --}}
+                    {{-- </div> --}}
+                    {{-- @endif --}}
+{{--  --}}
+                    {{-- @if(config('services.rajaongkir.komship_enabled') && $order->status === \App\Models\Order::STATUS_PAID && !$order->hasShipment()) --}}
+                    {{-- <form action="{{ route('admin.orders.shipment.store', $order) }}" method="POST" style="margin-top:12px;"> --}}
+                        {{-- @csrf --}}
+                        {{-- <button type="submit" class="btn btn-primary btn-block">Buat Shipment Komship</button> --}}
+                    {{-- </form> --}}
+                    {{-- @endif --}}
+{{--  --}}
+                    {{-- @if(config('services.rajaongkir.komship_enabled') && $order->hasShipment()) --}}
+                    {{-- <form action="{{ route('admin.orders.shipment.sync', $order) }}" method="POST" style="margin-top:12px;"> --}}
+                        {{-- @csrf --}}
+                        {{-- <button type="submit" class="btn btn-info btn-block">Sinkronkan Tracking</button> --}}
+                    {{-- </form> --}}
+                    {{-- @endif --}}
+{{--  --}}
+                    {{-- @if($order->shippingTrackingEvents()->isNotEmpty()) --}}
+                    {{-- <hr> --}}
+                    {{-- <h4><b>Riwayat Tracking</b></h4> --}}
+                    {{-- <ul class="list-unstyled" style="margin-bottom:0;"> --}}
+                        {{-- @foreach($order->shippingTrackingEvents() as $event) --}}
+                        {{-- <li style="padding:10px 0; border-bottom:1px solid #eee;"> --}}
+                            {{-- <div><b>{{ $event['status_label'] ?? '-' }}</b></div> --}}
+                            {{-- <div>{{ $event['description'] ?? '-' }}</div> --}}
+                            {{-- <small class="text-muted">{{ trim(($event['date'] ?? '') . ' ' . ($event['location'] ?? '')) ?: '-' }}</small> --}}
+                        {{-- </li> --}}
+                        {{-- @endforeach --}}
+                    {{-- </ul> --}}
+                    {{-- @endif --}}
                 </div>
             </div>
         </div>
