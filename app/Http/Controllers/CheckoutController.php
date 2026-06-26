@@ -138,6 +138,7 @@ class CheckoutController extends Controller
         $user = auth()->user()->load('detail');
         $isGeneralBuyer = $user->isGeneralBuyer();
         $usesSelectedDestination = $this->hasSelectedDestination($request);
+        $hasLegacyLocationCodes = $this->hasLegacyLocationCodes($request);
 
         $rules = [
             'selected_shipping_option' => 'required|string',
@@ -162,7 +163,7 @@ class CheckoutController extends Controller
                     'kecamatan_name' => 'required|string',
                     'desa_name' => 'nullable|string',
                 ]);
-            } else {
+            } elseif ($hasLegacyLocationCodes) {
                 $this->mergeLaravoltLocationNames($request);
 
                 $rules = array_merge($rules, [
@@ -174,6 +175,13 @@ class CheckoutController extends Controller
                     'kecamatan_name' => 'required',
                     'desa_code' => 'required',
                     'desa_name' => 'required',
+                ]);
+            } else {
+                $rules = array_merge($rules, [
+                    'provinsi_name' => 'required|string',
+                    'kabupaten_name' => 'required|string',
+                    'kecamatan_name' => 'required|string',
+                    'desa_name' => 'nullable|string',
                 ]);
             }
         }
@@ -295,7 +303,7 @@ class CheckoutController extends Controller
 
     protected function persistGeneralBuyerProfile(Request $request, $user)
     {
-        $usesSelectedDestination = $this->hasSelectedDestination($request);
+        $shouldClearLegacyCodes = $this->hasSelectedDestination($request) || !$this->hasLegacyLocationCodes($request);
 
         $user->update([
             'name' => $request->name,
@@ -307,13 +315,13 @@ class CheckoutController extends Controller
             ['user_id' => $user->id],
             [
                 'community_name' => null,
-                'provinsi_code' => $usesSelectedDestination ? '' : $request->provinsi_code,
+                'provinsi_code' => $shouldClearLegacyCodes ? '' : $request->provinsi_code,
                 'provinsi_name' => $request->provinsi_name,
-                'kabupaten_code' => $usesSelectedDestination ? '' : $request->kabupaten_code,
+                'kabupaten_code' => $shouldClearLegacyCodes ? '' : $request->kabupaten_code,
                 'kabupaten_name' => $request->kabupaten_name,
-                'kecamatan_code' => $usesSelectedDestination ? '' : $request->kecamatan_code,
+                'kecamatan_code' => $shouldClearLegacyCodes ? '' : $request->kecamatan_code,
                 'kecamatan_name' => $request->kecamatan_name,
-                'desa_code' => $usesSelectedDestination ? '' : $request->desa_code,
+                'desa_code' => $shouldClearLegacyCodes ? '' : $request->desa_code,
                 'desa_name' => $request->desa_name,
                 'username_ig' => null,
                 'posisi' => null,
@@ -360,16 +368,25 @@ class CheckoutController extends Controller
         ];
 
         if ($forQuote) {
-            validator($data, [
-                'provinsi_code' => 'required',
-                'provinsi_name' => 'required',
-                'kabupaten_code' => 'required',
-                'kabupaten_name' => 'required',
-                'kecamatan_code' => 'required',
-                'kecamatan_name' => 'required',
-                'desa_code' => 'required',
-                'desa_name' => 'required',
-            ])->validate();
+            if ($this->hasLocationCodes($data)) {
+                validator($data, [
+                    'provinsi_code' => 'required',
+                    'provinsi_name' => 'required',
+                    'kabupaten_code' => 'required',
+                    'kabupaten_name' => 'required',
+                    'kecamatan_code' => 'required',
+                    'kecamatan_name' => 'required',
+                    'desa_code' => 'required',
+                    'desa_name' => 'required',
+                ])->validate();
+            } else {
+                validator($data, [
+                    'provinsi_name' => 'required',
+                    'kabupaten_name' => 'required',
+                    'kecamatan_name' => 'required',
+                    'desa_name' => 'nullable|string',
+                ])->validate();
+            }
         }
 
         return $data;
@@ -456,6 +473,27 @@ class CheckoutController extends Controller
     protected function hasSelectedDestination(Request $request)
     {
         return trim((string) $request->input('shipping_destination_id')) !== '';
+    }
+
+    protected function hasLegacyLocationCodes(Request $request)
+    {
+        return $this->hasLocationCodes($request->only([
+            'provinsi_code',
+            'kabupaten_code',
+            'kecamatan_code',
+            'desa_code',
+        ]));
+    }
+
+    protected function hasLocationCodes(array $data)
+    {
+        foreach (['provinsi_code', 'kabupaten_code', 'kecamatan_code', 'desa_code'] as $key) {
+            if (trim((string) ($data[$key] ?? '')) === '') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     protected function calculateCartWeight(Cart $cart)

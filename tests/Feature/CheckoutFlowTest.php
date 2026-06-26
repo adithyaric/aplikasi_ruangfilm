@@ -147,6 +147,43 @@ class CheckoutFlowTest extends TestCase
         ]);
     }
 
+    public function test_general_buyer_can_save_biodata_with_selected_rajaongkir_destination()
+    {
+        $user = User::factory()->create([
+            'role' => 'umum',
+            'category_id' => null,
+            'email' => 'buyer-biodata@gmail.com',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->post(route('user-detail.save'), [
+                'name' => 'Buyer Biodata',
+                'email' => 'buyer-biodata@gmail.com',
+                'no_hp' => '081234567890',
+                'shipping_destination_id' => '68424',
+                'shipping_destination_label' => 'Minomartani, Ngaglik, Kabupaten Sleman, DI Yogyakarta',
+                'provinsi_name' => 'DI Yogyakarta',
+                'kabupaten_name' => 'Kabupaten Sleman',
+                'kecamatan_name' => 'Ngaglik',
+                'desa_name' => 'Minomartani',
+                'alamat_lengkap' => 'Jl. Palagan No. 7',
+            ]);
+
+        $response->assertRedirect(route('user-detail.index'));
+        $this->assertDatabaseHas('user_details', [
+            'user_id' => $user->id,
+            'provinsi_code' => '',
+            'kabupaten_code' => '',
+            'kecamatan_code' => '',
+            'desa_code' => '',
+            'provinsi_name' => 'DI Yogyakarta',
+            'kabupaten_name' => 'Kabupaten Sleman',
+            'kecamatan_name' => 'Ngaglik',
+            'desa_name' => 'Minomartani',
+            'alamat_lengkap' => 'Jl. Palagan No. 7',
+        ]);
+    }
+
     public function test_shipping_options_endpoint_returns_live_quotes_for_valid_address()
     {
         $user = User::factory()->role('umum')->create();
@@ -212,6 +249,74 @@ class CheckoutFlowTest extends TestCase
             ->assertJsonPath('data.0.id', '68424')
             ->assertJsonPath('data.0.city', 'Kabupaten Sleman')
             ->assertJsonPath('data.0.village', 'Minomartani');
+    }
+
+    public function test_shipping_options_endpoint_accepts_saved_rajaongkir_names_without_destination_id()
+    {
+        $user = User::factory()->role('umum')->create();
+        UserDetail::factory()->create([
+            'user_id' => $user->id,
+            'provinsi_code' => '',
+            'kabupaten_code' => '',
+            'kecamatan_code' => '',
+            'desa_code' => '',
+            'provinsi_name' => 'DI Yogyakarta',
+            'kabupaten_name' => 'Kabupaten Sleman',
+            'kecamatan_name' => 'Ngaglik',
+            'desa_name' => 'Minomartani',
+        ]);
+
+        $merchandise = Merchandise::factory()->create([
+            'qty_stock' => 5,
+            'weight' => 400,
+        ]);
+
+        Expedition::factory()->create([
+            'name' => 'JNE',
+            'external_code' => 'jne',
+            'is_active' => true,
+        ]);
+
+        Http::fake([
+            'https://rajaongkir.komerce.id/api/v1/destination/domestic-destination*' => Http::response([
+                'meta' => ['code' => 200],
+                'data' => [[
+                    'id' => '68424',
+                    'label' => 'Minomartani, Ngaglik, Kabupaten Sleman, DI Yogyakarta, 55581',
+                    'province_name' => 'DI Yogyakarta',
+                    'city_name' => 'Kabupaten Sleman',
+                    'district_name' => 'Ngaglik',
+                    'subdistrict_name' => 'Ngaglik',
+                    'village_name' => 'Minomartani',
+                    'zip_code' => '55581',
+                ]],
+            ], 200),
+            'https://rajaongkir.komerce.id/api/v1/calculate/domestic-cost' => Http::response([
+                'meta' => ['code' => 200],
+                'data' => [[
+                    'code' => 'jne',
+                    'name' => 'JNE',
+                    'service' => 'REG',
+                    'description' => 'Regular Service',
+                    'cost' => 21000,
+                    'etd' => '2-3 day',
+                ]],
+            ], 200),
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('cart.store', $merchandise), ['quantity' => 1]);
+
+        $this->actingAs($user)
+            ->postJson(route('checkout.shipping-options'), [
+                'provinsi_name' => 'DI Yogyakarta',
+                'kabupaten_name' => 'Kabupaten Sleman',
+                'kecamatan_name' => 'Ngaglik',
+                'desa_name' => 'Minomartani',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.destination.id', '68424')
+            ->assertJsonPath('data.groups.0.options.0.quote_id', 'jne|reg');
     }
 
     public function test_shipping_options_endpoint_accepts_selected_rajaongkir_destination()

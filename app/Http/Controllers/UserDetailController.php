@@ -28,16 +28,10 @@ class UserDetailController extends Controller
     {
         $user = auth()->user();
         $isGeneralBuyer = $user->isGeneralBuyer();
+        $usesSelectedDestination = $this->hasSelectedDestination($request);
+        $hasLegacyLocationCodes = $this->hasLegacyLocationCodes($request);
 
         $rules = [
-            'provinsi_code'  => 'required',
-            'provinsi_name'  => 'required',
-            'kabupaten_code' => 'required',
-            'kabupaten_name' => 'required',
-            'kecamatan_code' => 'required',
-            'kecamatan_name' => 'required',
-            'desa_code'      => 'required',
-            'desa_name'      => 'required',
             'alamat_lengkap' => 'required|string',
         ];
 
@@ -45,7 +39,46 @@ class UserDetailController extends Controller
             $rules['name'] = 'required|string|max:100';
             $rules['email'] = ['required', 'email', Rule::unique('users', 'email')->ignore($user->id)];
             $rules['no_hp'] = 'required|string|min:10|max:15|regex:/^[0-9]+$/';
+
+            if ($usesSelectedDestination) {
+                $rules = array_merge($rules, [
+                    'shipping_destination_id' => 'required|string',
+                    'shipping_destination_label' => 'required|string',
+                    'provinsi_name' => 'required|string',
+                    'kabupaten_name' => 'required|string',
+                    'kecamatan_name' => 'required|string',
+                    'desa_name' => 'nullable|string',
+                ]);
+            } elseif ($hasLegacyLocationCodes) {
+                $rules = array_merge($rules, [
+                    'provinsi_code'  => 'required',
+                    'provinsi_name'  => 'required',
+                    'kabupaten_code' => 'required',
+                    'kabupaten_name' => 'required',
+                    'kecamatan_code' => 'required',
+                    'kecamatan_name' => 'required',
+                    'desa_code'      => 'required',
+                    'desa_name'      => 'required',
+                ]);
+            } else {
+                $rules = array_merge($rules, [
+                    'provinsi_name' => 'required|string',
+                    'kabupaten_name' => 'required|string',
+                    'kecamatan_name' => 'required|string',
+                    'desa_name' => 'nullable|string',
+                ]);
+            }
         } else {
+            $rules = array_merge($rules, [
+                'provinsi_code'  => 'required',
+                'provinsi_name'  => 'required',
+                'kabupaten_code' => 'required',
+                'kabupaten_name' => 'required',
+                'kecamatan_code' => 'required',
+                'kecamatan_name' => 'required',
+                'desa_code'      => 'required',
+                'desa_name'      => 'required',
+            ]);
             $rules['community_name'] = 'required|string|max:255';
             $rules['username_ig'] = 'required|string|max:255';
             $rules['posisi'] = 'required|string|max:255';
@@ -79,13 +112,13 @@ class UserDetailController extends Controller
             ['user_id' => $user->id],
             [
                 'community_name' => $isGeneralBuyer ? null : $request->community_name,
-                'provinsi_code'  => $request->provinsi_code,
+                'provinsi_code'  => $isGeneralBuyer && ($usesSelectedDestination || !$hasLegacyLocationCodes) ? '' : $request->provinsi_code,
                 'provinsi_name'  => $request->provinsi_name,
-                'kabupaten_code' => $request->kabupaten_code,
+                'kabupaten_code' => $isGeneralBuyer && ($usesSelectedDestination || !$hasLegacyLocationCodes) ? '' : $request->kabupaten_code,
                 'kabupaten_name' => $request->kabupaten_name,
-                'kecamatan_code' => $request->kecamatan_code,
+                'kecamatan_code' => $isGeneralBuyer && ($usesSelectedDestination || !$hasLegacyLocationCodes) ? '' : $request->kecamatan_code,
                 'kecamatan_name' => $request->kecamatan_name,
-                'desa_code'      => $request->desa_code,
+                'desa_code'      => $isGeneralBuyer && ($usesSelectedDestination || !$hasLegacyLocationCodes) ? '' : $request->desa_code,
                 'desa_name'      => $request->desa_name,
                 'username_ig'    => $isGeneralBuyer ? null : $request->username_ig,
                 'posisi'         => $isGeneralBuyer ? null : $request->posisi,
@@ -162,5 +195,21 @@ class UserDetailController extends Controller
     public function destroy(UserDetail $userDetail)
     {
         //
+    }
+
+    protected function hasSelectedDestination(Request $request)
+    {
+        return trim((string) $request->input('shipping_destination_id')) !== '';
+    }
+
+    protected function hasLegacyLocationCodes(Request $request)
+    {
+        foreach (['provinsi_code', 'kabupaten_code', 'kecamatan_code', 'desa_code'] as $key) {
+            if (trim((string) $request->input($key)) === '') {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

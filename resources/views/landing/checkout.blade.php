@@ -3,6 +3,12 @@
 @php
     $detail = $user->detail;
     $subtotal = $cart->subtotal();
+    $savedDestinationLabel = collect([
+        optional($detail)->desa_name,
+        optional($detail)->kecamatan_name,
+        optional($detail)->kabupaten_name,
+        optional($detail)->provinsi_name,
+    ])->filter()->implode(', ');
 @endphp
 <main class="relative z-10">
     <section class="max-w-6xl mx-auto px-6 md:px-10 py-16">
@@ -59,7 +65,7 @@
                                     id="destination_keyword"
                                     class="field-input flex-1"
                                     placeholder="Cari kecamatan, kelurahan, kabupaten, atau kode pos"
-                                    value="{{ old('shipping_destination_label') }}">
+                                    value="{{ old('shipping_destination_label', $savedDestinationLabel) }}">
                                 <button
                                     type="button"
                                     id="search-destination"
@@ -69,7 +75,7 @@
                             </div>
 
                             <input type="hidden" name="shipping_destination_id" id="shipping_destination_id" value="{{ old('shipping_destination_id') }}">
-                            <input type="hidden" name="shipping_destination_label" id="shipping_destination_label" value="{{ old('shipping_destination_label') }}">
+                            <input type="hidden" name="shipping_destination_label" id="shipping_destination_label" value="{{ old('shipping_destination_label', $savedDestinationLabel) }}">
                             <input type="hidden" name="provinsi_name" id="provinsi_name" value="{{ old('provinsi_name', $detail->provinsi_name ?? '') }}">
                             <input type="hidden" name="kabupaten_name" id="kabupaten_name" value="{{ old('kabupaten_name', $detail->kabupaten_name ?? '') }}">
                             <input type="hidden" name="kecamatan_name" id="kecamatan_name" value="{{ old('kecamatan_name', $detail->kecamatan_name ?? '') }}">
@@ -94,9 +100,6 @@
                                 </div>
                             </div>
                             <div id="destination-results" class="mt-3 hidden space-y-3"></div>
-                            <p class="text-xs text-gray-400 mt-3">
-                                Pilih tujuan langsung dari RajaOngkir supaya ongkir tidak bergantung ke mapping Laravolt.
-                            </p>
                         </div>
 
                         <div class="pt-2">
@@ -225,7 +228,7 @@
     const districtNameInput = document.getElementById('kecamatan_name');
     const villageNameInput = document.getElementById('desa_name');
     const postalCodeInput = document.getElementById('postal_code');
-    const destinationStorageKey = "checkout_destination_{{ $user->id }}";
+    const destinationStorageKey = "shipping_destination_{{ $user->id }}";
 
     function formatRupiah(value) {
         return 'Rp ' + Number(value || 0).toLocaleString('id-ID');

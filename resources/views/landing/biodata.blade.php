@@ -8,6 +8,12 @@
     $jatimName = 'JAWA TIMUR';
     $pacitanCode = '3501';
     $pacitanName = 'KABUPATEN PACITAN';
+    $savedDestinationLabel = collect([
+        optional($detail)->desa_name,
+        optional($detail)->kecamatan_name,
+        optional($detail)->kabupaten_name,
+        optional($detail)->provinsi_name,
+    ])->filter()->implode(', ');
 @endphp
 
 <main class="relative z-10">
@@ -118,10 +124,56 @@
                 @endif
 
                 <div class="section-divider">Alamat</div>
+                @if($isGeneralBuyer)
+                <div class="field-group">
+                    <label class="field-label">Alamat Lengkap <span class="text-red-400">*</span></label>
+                    <textarea name="alamat_lengkap" class="field-input" rows="4"
+                        placeholder="Nama jalan, nomor rumah, RT/RW, patokan..." required>{{ old('alamat_lengkap', $detail->alamat_lengkap ?? '') }}</textarea>
+                </div>
+
+                <div class="field-group">
+                    <label class="field-label">Tujuan Pengiriman RajaOngkir <span class="text-red-400">*</span></label>
+                    <div class="flex flex-col gap-3 md:flex-row">
+                        <input
+                            type="text"
+                            id="destination_keyword"
+                            class="field-input flex-1"
+                            placeholder="Cari kecamatan, kelurahan, kabupaten, atau kode pos"
+                            value="{{ old('shipping_destination_label', $savedDestinationLabel) }}">
+                        <button
+                            type="button"
+                            id="search-destination"
+                            class="h-11 px-5 rounded-xl bg-white/10 border border-white/10 text-white text-sm font-semibold hover:bg-white/15 transition">
+                            Cari Tujuan
+                        </button>
+                    </div>
+
+                    <input type="hidden" name="shipping_destination_id" id="shipping_destination_id" value="{{ old('shipping_destination_id') }}">
+                    <input type="hidden" name="shipping_destination_label" id="shipping_destination_label" value="{{ old('shipping_destination_label', $savedDestinationLabel) }}">
+                    <input type="hidden" name="provinsi_name" id="provinsi_name" value="{{ old('provinsi_name', $detail->provinsi_name ?? '') }}">
+                    <input type="hidden" name="kabupaten_name" id="kabupaten_name" value="{{ old('kabupaten_name', $detail->kabupaten_name ?? '') }}">
+                    <input type="hidden" name="kecamatan_name" id="kecamatan_name" value="{{ old('kecamatan_name', $detail->kecamatan_name ?? '') }}">
+                    <input type="hidden" name="desa_name" id="desa_name" value="{{ old('desa_name', $detail->desa_name ?? '') }}">
+
+                    <div id="destination-feedback" class="mt-3 hidden rounded-2xl px-4 py-3 text-sm"></div>
+                    <div id="selected-destination" class="mt-3 hidden rounded-2xl border border-green-500/20 bg-green-500/5 px-4 py-4">
+                        <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                                <div class="text-xs uppercase tracking-[0.2em] text-green-300">Tujuan dipilih</div>
+                                <div id="selected-destination-label" class="mt-1 text-sm text-white"></div>
+                            </div>
+                            <button type="button" id="clear-destination" class="text-sm text-green-200 hover:text-white transition">
+                                Ganti tujuan
+                            </button>
+                        </div>
+                    </div>
+                    <div id="destination-results" class="mt-3 hidden space-y-3"></div>
+                </div>
+                @else
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-5">
                     <div class="field-group">
                         <label class="field-label">Provinsi <span class="text-red-400">*</span></label>
-                        @if(!$isGeneralBuyer && $categoryId != 1)
+                        @if($categoryId != 1)
                         <input type="text" class="field-input" value="{{ $jatimName }}" disabled>
                         <input type="hidden" name="provinsi_code" id="provinsi" value="{{ $jatimCode }}">
                         @else
@@ -136,12 +188,12 @@
                         </select>
                         @endif
                         <input type="hidden" name="provinsi_name" id="provinsi_name"
-                            value="{{ old('provinsi_name', $detail->provinsi_name ?? (!$isGeneralBuyer && $categoryId != 1 ? $jatimName : '')) }}">
+                            value="{{ old('provinsi_name', $detail->provinsi_name ?? ($categoryId != 1 ? $jatimName : '')) }}">
                     </div>
 
                     <div class="field-group">
                         <label class="field-label">Kabupaten / Kota <span class="text-red-400">*</span></label>
-                        @if(!$isGeneralBuyer && in_array($categoryId, [3, 4]))
+                        @if(in_array($categoryId, [3, 4]))
                         <input type="text" class="field-input" value="{{ $pacitanName }}" disabled>
                         <input type="hidden" name="kabupaten_code" id="kabupaten" value="{{ $pacitanCode }}">
                         <input type="hidden" name="kabupaten_name" id="kabupaten_name" value="{{ $pacitanName }}">
@@ -180,6 +232,7 @@
                     <textarea name="alamat_lengkap" class="field-input" rows="4"
                         placeholder="Nama jalan, nomor rumah, RT/RW, patokan..." required>{{ old('alamat_lengkap', $detail->alamat_lengkap ?? '') }}</textarea>
                 </div>
+                @endif
 
                 <div class="flex flex-col md:flex-row gap-3 pt-2">
                     <button type="button"
@@ -210,6 +263,20 @@
     const existingKabupaten = "{{ old('kabupaten_code', $detail->kabupaten_code ?? '') }}";
     const existingKecamatan = "{{ old('kecamatan_code', $detail->kecamatan_code ?? '') }}";
     const existingDesaCode = "{{ old('desa_code', $detail->desa_code ?? '') }}";
+    const destinationKeywordInput = document.getElementById('destination_keyword');
+    const searchDestinationButton = document.getElementById('search-destination');
+    const destinationResults = document.getElementById('destination-results');
+    const destinationFeedback = document.getElementById('destination-feedback');
+    const selectedDestinationBox = document.getElementById('selected-destination');
+    const selectedDestinationLabel = document.getElementById('selected-destination-label');
+    const clearDestinationButton = document.getElementById('clear-destination');
+    const shippingDestinationIdInput = document.getElementById('shipping_destination_id');
+    const shippingDestinationLabelInput = document.getElementById('shipping_destination_label');
+    const provinceNameInput = document.getElementById('provinsi_name');
+    const cityNameInput = document.getElementById('kabupaten_name');
+    const districtNameInput = document.getElementById('kecamatan_name');
+    const villageNameInput = document.getElementById('desa_name');
+    const destinationStorageKey = "shipping_destination_{{ $user->id }}";
 
     function hydrateKabupaten(selectedCode) {
         if (selectedCode) {
@@ -229,15 +296,317 @@
         }
     }
 
+    function hideDestinationFeedback() {
+        if (destinationFeedback) {
+            destinationFeedback.classList.add('hidden');
+        }
+    }
+
+    function showDestinationFeedback(message, type = 'info') {
+        if (!destinationFeedback) {
+            return;
+        }
+
+        const classes = {
+            info: 'border border-white/10 bg-white/5 text-gray-200',
+            error: 'border border-red-500/30 bg-red-500/10 text-red-200',
+            success: 'border border-green-500/30 bg-green-500/10 text-green-200',
+            warning: 'border border-yellow-500/30 bg-yellow-500/10 text-yellow-200',
+        };
+
+        destinationFeedback.className = 'mt-3 rounded-2xl px-4 py-3 text-sm ' + (classes[type] || classes.info);
+        destinationFeedback.textContent = message;
+        destinationFeedback.classList.remove('hidden');
+    }
+
+    function hideDestinationResults() {
+        if (!destinationResults) {
+            return;
+        }
+
+        destinationResults.innerHTML = '';
+        destinationResults.classList.add('hidden');
+    }
+
+    function persistSelectedDestination(destination) {
+        if (!isGeneralBuyer || !window.localStorage) {
+            return;
+        }
+
+        try {
+            window.localStorage.setItem(destinationStorageKey, JSON.stringify(destination));
+        } catch (error) {
+        }
+    }
+
+    function removePersistedDestination() {
+        if (!isGeneralBuyer || !window.localStorage) {
+            return;
+        }
+
+        try {
+            window.localStorage.removeItem(destinationStorageKey);
+        } catch (error) {
+        }
+    }
+
+    function buildDestinationPayload(destination) {
+        return {
+            id: String(destination.id || ''),
+            label: String(destination.label || ''),
+            province: String(destination.province || ''),
+            city: String(destination.city || ''),
+            district: String(destination.district || ''),
+            subdistrict: String(destination.subdistrict || destination.district || ''),
+            village: String(destination.village || ''),
+        };
+    }
+
+    function applySelectedDestination(destination, options = {}) {
+        if (!isGeneralBuyer || !destinationKeywordInput) {
+            return;
+        }
+
+        const payload = buildDestinationPayload(destination);
+
+        destinationKeywordInput.value = payload.label;
+        shippingDestinationIdInput.value = payload.id;
+        shippingDestinationLabelInput.value = payload.label;
+        provinceNameInput.value = payload.province;
+        cityNameInput.value = payload.city;
+        districtNameInput.value = payload.subdistrict;
+        villageNameInput.value = payload.village;
+
+        if (selectedDestinationBox && selectedDestinationLabel) {
+            selectedDestinationLabel.textContent = payload.label;
+            selectedDestinationBox.classList.remove('hidden');
+        }
+
+        hideDestinationResults();
+        hideDestinationFeedback();
+
+        if (options.persist !== false) {
+            persistSelectedDestination(payload);
+        }
+    }
+
+    function clearSelectedDestination(preserveKeyword = false) {
+        if (!isGeneralBuyer) {
+            return;
+        }
+
+        shippingDestinationIdInput.value = '';
+        shippingDestinationLabelInput.value = '';
+        provinceNameInput.value = '';
+        cityNameInput.value = '';
+        districtNameInput.value = '';
+        villageNameInput.value = '';
+
+        if (!preserveKeyword && destinationKeywordInput) {
+            destinationKeywordInput.value = '';
+        }
+
+        if (selectedDestinationBox) {
+            selectedDestinationBox.classList.add('hidden');
+        }
+
+        hideDestinationResults();
+        removePersistedDestination();
+    }
+
+    function renderDestinationResults(results) {
+        if (!destinationResults) {
+            return;
+        }
+
+        destinationResults.innerHTML = '';
+
+        results.forEach(function(item) {
+            const button = document.createElement('button');
+            const title = document.createElement('div');
+            const meta = document.createElement('div');
+
+            button.type = 'button';
+            button.className = 'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left transition hover:border-purple-400/40 hover:bg-white/10';
+            button.dataset.id = item.id || '';
+            button.dataset.label = item.label || '';
+            button.dataset.province = item.province || '';
+            button.dataset.city = item.city || '';
+            button.dataset.district = item.district || '';
+            button.dataset.subdistrict = item.subdistrict || '';
+            button.dataset.village = item.village || '';
+
+            title.className = 'text-white font-semibold';
+            title.textContent = item.label || '-';
+            meta.className = 'mt-1 text-xs text-gray-400';
+            meta.textContent = [item.village || '-', item.subdistrict || item.district || '-', item.city || '-'].join(' · ');
+
+            button.appendChild(title);
+            button.appendChild(meta);
+            destinationResults.appendChild(button);
+        });
+
+        destinationResults.classList.remove('hidden');
+    }
+
+    async function searchDestinations() {
+        if (!isGeneralBuyer || !destinationKeywordInput || !searchDestinationButton) {
+            return;
+        }
+
+        const keyword = destinationKeywordInput.value.trim();
+
+        if (!keyword) {
+            showDestinationFeedback('Masukkan kata kunci tujuan terlebih dahulu.', 'warning');
+            hideDestinationResults();
+            return;
+        }
+
+        searchDestinationButton.setAttribute('disabled', 'disabled');
+        searchDestinationButton.textContent = 'Mencari...';
+        hideDestinationFeedback();
+        hideDestinationResults();
+
+        try {
+            const response = await fetch("{{ route('checkout.destination-search') }}?keyword=" + encodeURIComponent(keyword), {
+                headers: {
+                    'Accept': 'application/json',
+                },
+            });
+            const payload = await response.json();
+
+            if (!response.ok) {
+                throw new Error(payload.message || 'Gagal mencari tujuan RajaOngkir.');
+            }
+
+            const results = payload.data || [];
+
+            if (!results.length) {
+                showDestinationFeedback('Tujuan RajaOngkir tidak ditemukan. Coba kata kunci lain.', 'warning');
+                return;
+            }
+
+            renderDestinationResults(results);
+        } catch (error) {
+            showDestinationFeedback(error.message || 'Gagal mencari tujuan RajaOngkir.', 'error');
+        } finally {
+            searchDestinationButton.removeAttribute('disabled');
+            searchDestinationButton.textContent = 'Cari Tujuan';
+        }
+    }
+
+    function restoreSelectedDestination() {
+        if (!isGeneralBuyer || !destinationKeywordInput) {
+            return;
+        }
+
+        if (shippingDestinationIdInput && shippingDestinationIdInput.value) {
+            applySelectedDestination({
+                id: shippingDestinationIdInput.value,
+                label: shippingDestinationLabelInput.value,
+                province: provinceNameInput.value,
+                city: cityNameInput.value,
+                subdistrict: districtNameInput.value,
+                village: villageNameInput.value,
+            }, {
+                persist: true,
+            });
+
+            return;
+        }
+
+        if (window.localStorage) {
+            try {
+                const raw = window.localStorage.getItem(destinationStorageKey);
+
+                if (raw) {
+                    const destination = JSON.parse(raw);
+
+                    if (destination && destination.id) {
+                        applySelectedDestination(destination, {
+                            persist: false,
+                        });
+
+                        return;
+                    }
+                }
+            } catch (error) {
+            }
+        }
+
+        if (shippingDestinationLabelInput.value) {
+            destinationKeywordInput.value = shippingDestinationLabelInput.value;
+
+            if (selectedDestinationBox && selectedDestinationLabel) {
+                selectedDestinationLabel.textContent = shippingDestinationLabelInput.value;
+                selectedDestinationBox.classList.remove('hidden');
+            }
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
-        if (typeof initSelect2 === 'function') {
+        if (!isGeneralBuyer && typeof initSelect2 === 'function') {
             initSelect2('#provinsi', 'Pilih Provinsi');
             initSelect2('#kabupaten', 'Pilih Kabupaten/Kota');
             initSelect2('#kecamatan', 'Pilih Kecamatan');
             initSelect2('#desa', 'Pilih Desa/Kelurahan');
         }
 
-        if (!isGeneralBuyer && categoryId !== 1) {
+        if (isGeneralBuyer) {
+            restoreSelectedDestination();
+
+            if (destinationKeywordInput) {
+                destinationKeywordInput.addEventListener('input', function() {
+                    if (shippingDestinationIdInput.value && this.value.trim() !== shippingDestinationLabelInput.value) {
+                        clearSelectedDestination(true);
+                    }
+                });
+
+                destinationKeywordInput.addEventListener('keydown', function(event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        searchDestinations();
+                    }
+                });
+            }
+
+            if (searchDestinationButton) {
+                searchDestinationButton.addEventListener('click', function() {
+                    searchDestinations();
+                });
+            }
+
+            if (clearDestinationButton) {
+                clearDestinationButton.addEventListener('click', function() {
+                    clearSelectedDestination();
+                    hideDestinationFeedback();
+                });
+            }
+
+            if (destinationResults) {
+                destinationResults.addEventListener('click', function(event) {
+                    const button = event.target.closest('button[data-id]');
+
+                    if (!button) {
+                        return;
+                    }
+
+                    applySelectedDestination({
+                        id: button.dataset.id,
+                        label: button.dataset.label,
+                        province: button.dataset.province,
+                        city: button.dataset.city,
+                        district: button.dataset.district,
+                        subdistrict: button.dataset.subdistrict,
+                        village: button.dataset.village,
+                    });
+                });
+            }
+
+            return;
+        }
+
+        if (categoryId !== 1) {
             document.getElementById('provinsi_name').value = "{{ $jatimName }}";
 
             if (categoryId === 3 || categoryId === 4) {
