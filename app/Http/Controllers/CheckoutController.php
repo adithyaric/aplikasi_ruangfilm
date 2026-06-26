@@ -15,7 +15,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Laravolt\Indonesia\Models\City;
+use Laravolt\Indonesia\Models\District;
 use Laravolt\Indonesia\Models\Province;
+use Laravolt\Indonesia\Models\Village;
 
 class CheckoutController extends Controller
 {
@@ -59,8 +62,7 @@ class CheckoutController extends Controller
         }
 
         try {
-            $address = $this->resolveShippingAddressData($request, $user, true);
-            $destination = $destinationResolver->resolve($address);
+            $destination = $this->resolveShippingDestination($request, $user, $destinationResolver, true);
             $quotes = $this->getLiveShippingOptions(
                 $costService,
                 $destination['id'],
@@ -104,10 +106,38 @@ class CheckoutController extends Controller
         ]);
     }
 
+    public function searchDestination(Request $request, RajaOngkirCostService $costService)
+    {
+        $keyword = trim((string) $request->query('keyword'));
+
+        if ($keyword === '') {
+            return response()->json([
+                'message' => 'Masukkan kata kunci alamat terlebih dahulu.',
+                'errors' => ['keyword' => ['Masukkan kata kunci alamat terlebih dahulu.']],
+            ], 422);
+        }
+
+        try {
+            $results = collect($costService->searchDomesticDestinations($keyword, 15, 0))
+                ->values()
+                ->all();
+        } catch (ShippingException $exception) {
+            return response()->json([
+                'message' => $exception->userMessage(),
+                'errors' => ['destination' => [$exception->userMessage()]],
+            ], 422);
+        }
+
+        return response()->json([
+            'data' => $results,
+        ]);
+    }
+
     public function store(Request $request, RajaOngkirDestinationResolver $destinationResolver, RajaOngkirCostService $costService)
     {
         $user = auth()->user()->load('detail');
         $isGeneralBuyer = $user->isGeneralBuyer();
+        $usesSelectedDestination = $this->hasSelectedDestination($request);
 
         $rules = [
             'selected_shipping_option' => 'required|string',
@@ -120,16 +150,32 @@ class CheckoutController extends Controller
                 'name' => 'required|string|max:100',
                 'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($user->id)],
                 'no_hp' => 'required|string|min:10|max:15|regex:/^[0-9]+$/',
-                'provinsi_code' => 'required',
-                'provinsi_name' => 'required',
-                'kabupaten_code' => 'required',
-                'kabupaten_name' => 'required',
-                'kecamatan_code' => 'required',
-                'kecamatan_name' => 'required',
-                'desa_code' => 'required',
-                'desa_name' => 'required',
                 'alamat_lengkap' => 'required|string',
             ]);
+
+            if ($usesSelectedDestination) {
+                $rules = array_merge($rules, [
+                    'shipping_destination_id' => 'required|string',
+                    'shipping_destination_label' => 'required|string',
+                    'provinsi_name' => 'required|string',
+                    'kabupaten_name' => 'required|string',
+                    'kecamatan_name' => 'required|string',
+                    'desa_name' => 'nullable|string',
+                ]);
+            } else {
+                $this->mergeLaravoltLocationNames($request);
+
+                $rules = array_merge($rules, [
+                    'provinsi_code' => 'required',
+                    'provinsi_name' => 'required',
+                    'kabupaten_code' => 'required',
+                    'kabupaten_name' => 'required',
+                    'kecamatan_code' => 'required',
+                    'kecamatan_name' => 'required',
+                    'desa_code' => 'required',
+                    'desa_name' => 'required',
+                ]);
+            }
         }
 
         $request->validate($rules);
@@ -171,8 +217,7 @@ class CheckoutController extends Controller
         }
 
         try {
-            $address = $this->resolveShippingAddressData($request, $user);
-            $destination = $destinationResolver->resolve($address);
+            $destination = $this->resolveShippingDestination($request, $user, $destinationResolver);
             $quotes = $this->getLiveShippingOptions(
                 $costService,
                 $destination['id'],
@@ -250,6 +295,8 @@ class CheckoutController extends Controller
 
     protected function persistGeneralBuyerProfile(Request $request, $user)
     {
+        $usesSelectedDestination = $this->hasSelectedDestination($request);
+
         $user->update([
             'name' => $request->name,
             'email' => $request->email,
@@ -260,13 +307,13 @@ class CheckoutController extends Controller
             ['user_id' => $user->id],
             [
                 'community_name' => null,
-                'provinsi_code' => $request->provinsi_code,
+                'provinsi_code' => $usesSelectedDestination ? '' : $request->provinsi_code,
                 'provinsi_name' => $request->provinsi_name,
-                'kabupaten_code' => $request->kabupaten_code,
+                'kabupaten_code' => $usesSelectedDestination ? '' : $request->kabupaten_code,
                 'kabupaten_name' => $request->kabupaten_name,
-                'kecamatan_code' => $request->kecamatan_code,
+                'kecamatan_code' => $usesSelectedDestination ? '' : $request->kecamatan_code,
                 'kecamatan_name' => $request->kecamatan_name,
-                'desa_code' => $request->desa_code,
+                'desa_code' => $usesSelectedDestination ? '' : $request->desa_code,
                 'desa_name' => $request->desa_name,
                 'username_ig' => null,
                 'posisi' => null,
@@ -287,14 +334,18 @@ class CheckoutController extends Controller
                 ]);
             }
 
+            $detail = $user->detail;
+
             return [
-                'provinsi_name' => $user->detail->provinsi_name,
-                'kabupaten_name' => $user->detail->kabupaten_name,
-                'kecamatan_name' => $user->detail->kecamatan_name,
-                'desa_name' => $user->detail->desa_name,
+                'provinsi_name' => $this->laravoltName(Province::class, $detail->provinsi_code, $detail->provinsi_name),
+                'kabupaten_name' => $this->laravoltName(City::class, $detail->kabupaten_code, $detail->kabupaten_name),
+                'kecamatan_name' => $this->laravoltName(District::class, $detail->kecamatan_code, $detail->kecamatan_name),
+                'desa_name' => $this->laravoltName(Village::class, $detail->desa_code, $detail->desa_name),
                 'postal_code' => $request->postal_code,
             ];
         }
+
+        $this->mergeLaravoltLocationNames($request);
 
         $data = [
             'provinsi_code' => $request->input('provinsi_code', optional($user->detail)->provinsi_code),
@@ -322,6 +373,89 @@ class CheckoutController extends Controller
         }
 
         return $data;
+    }
+
+    protected function resolveShippingDestination(Request $request, $user, RajaOngkirDestinationResolver $destinationResolver, $forQuote = false)
+    {
+        if ($user->isGeneralBuyer()) {
+            $selectedDestination = $this->selectedDestinationFromRequest($request, $forQuote);
+
+            if ($selectedDestination !== null) {
+                return $selectedDestination;
+            }
+        }
+
+        $address = $this->resolveShippingAddressData($request, $user, $forQuote);
+
+        return $destinationResolver->resolve($address);
+    }
+
+    protected function selectedDestinationFromRequest(Request $request, $forQuote = false)
+    {
+        $destinationId = trim((string) $request->input('shipping_destination_id'));
+
+        if ($destinationId === '') {
+            return null;
+        }
+
+        $data = [
+            'shipping_destination_id' => $destinationId,
+            'shipping_destination_label' => trim((string) $request->input('shipping_destination_label')),
+            'provinsi_name' => trim((string) $request->input('provinsi_name')),
+            'kabupaten_name' => trim((string) $request->input('kabupaten_name')),
+            'kecamatan_name' => trim((string) $request->input('kecamatan_name')),
+            'desa_name' => trim((string) $request->input('desa_name')),
+            'postal_code' => trim((string) $request->input('postal_code')),
+        ];
+
+        if ($forQuote) {
+            validator($data, [
+                'shipping_destination_id' => 'required',
+                'shipping_destination_label' => 'required',
+                'provinsi_name' => 'required',
+                'kabupaten_name' => 'required',
+                'kecamatan_name' => 'required',
+            ])->validate();
+        }
+
+        return [
+            'id' => $data['shipping_destination_id'],
+            'label' => $data['shipping_destination_label'],
+            'province' => $data['provinsi_name'],
+            'city' => $data['kabupaten_name'],
+            'district' => $data['kecamatan_name'],
+            'subdistrict' => $data['kecamatan_name'],
+            'village' => $data['desa_name'],
+            'zip_code' => $data['postal_code'],
+        ];
+    }
+
+    protected function mergeLaravoltLocationNames(Request $request)
+    {
+        $request->merge([
+            'provinsi_name' => $this->laravoltName(Province::class, $request->input('provinsi_code'), $request->input('provinsi_name')),
+            'kabupaten_name' => $this->laravoltName(City::class, $request->input('kabupaten_code'), $request->input('kabupaten_name')),
+            'kecamatan_name' => $this->laravoltName(District::class, $request->input('kecamatan_code'), $request->input('kecamatan_name')),
+            'desa_name' => $this->laravoltName(Village::class, $request->input('desa_code'), $request->input('desa_name')),
+        ]);
+    }
+
+    protected function laravoltName($modelClass, $code, $fallback = null)
+    {
+        $code = trim((string) $code);
+
+        if ($code === '') {
+            return $fallback;
+        }
+
+        $location = $modelClass::where('code', $code)->first();
+
+        return $location ? $location->name : $fallback;
+    }
+
+    protected function hasSelectedDestination(Request $request)
+    {
+        return trim((string) $request->input('shipping_destination_id')) !== '';
     }
 
     protected function calculateCartWeight(Cart $cart)

@@ -15,6 +15,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Laravolt\Indonesia\Models\City;
+use Laravolt\Indonesia\Models\District;
+use Laravolt\Indonesia\Models\Province;
+use Laravolt\Indonesia\Models\Village;
 use Tests\TestCase;
 
 class CheckoutFlowTest extends TestCase
@@ -180,6 +184,171 @@ class CheckoutFlowTest extends TestCase
             ->assertJsonPath('data.groups.0.courier_code', 'jne')
             ->assertJsonPath('data.groups.0.options.0.quote_id', 'jne|reg')
             ->assertJsonPath('data.groups.0.options.0.price', 21000);
+    }
+
+    public function test_checkout_destination_search_returns_rajaongkir_results()
+    {
+        $user = User::factory()->role('umum')->create();
+
+        Http::fake([
+            'https://rajaongkir.komerce.id/api/v1/destination/domestic-destination*' => Http::response([
+                'meta' => ['code' => 200],
+                'data' => [[
+                    'id' => '68424',
+                    'label' => 'Minomartani, Ngaglik, Kabupaten Sleman, DI Yogyakarta, 55581',
+                    'province_name' => 'DI Yogyakarta',
+                    'city_name' => 'Kabupaten Sleman',
+                    'district_name' => 'Ngaglik',
+                    'subdistrict_name' => 'Ngaglik',
+                    'village_name' => 'Minomartani',
+                    'zip_code' => '55581',
+                ]],
+            ], 200),
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('checkout.destination-search', ['keyword' => 'Minomartani']))
+            ->assertOk()
+            ->assertJsonPath('data.0.id', '68424')
+            ->assertJsonPath('data.0.city', 'Kabupaten Sleman')
+            ->assertJsonPath('data.0.village', 'Minomartani');
+    }
+
+    public function test_shipping_options_endpoint_accepts_selected_rajaongkir_destination()
+    {
+        $user = User::factory()->role('umum')->create();
+        $merchandise = Merchandise::factory()->create([
+            'qty_stock' => 5,
+            'weight' => 400,
+        ]);
+
+        Expedition::factory()->create([
+            'name' => 'JNE',
+            'external_code' => 'jne',
+            'is_active' => true,
+        ]);
+
+        $this->fakeSuccessfulShippingLookup(21000, 'REG', 'jne');
+
+        $this->actingAs($user)
+            ->post(route('cart.store', $merchandise), ['quantity' => 1]);
+
+        $this->actingAs($user)
+            ->postJson(route('checkout.shipping-options'), [
+                'shipping_destination_id' => '68424',
+                'shipping_destination_label' => 'Minomartani, Ngaglik, Kabupaten Sleman, DI Yogyakarta, 55581',
+                'provinsi_name' => 'DI Yogyakarta',
+                'kabupaten_name' => 'Kabupaten Sleman',
+                'kecamatan_name' => 'Ngaglik',
+                'desa_name' => 'Minomartani',
+                'postal_code' => '55581',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.destination.id', '68424')
+            ->assertJsonPath('data.groups.0.options.0.quote_id', 'jne|reg');
+    }
+
+    public function test_shipping_options_uses_laravolt_codes_when_hidden_location_names_are_stale()
+    {
+        $user = User::factory()->role('umum')->create();
+        $merchandise = Merchandise::factory()->create([
+            'qty_stock' => 5,
+            'weight' => 400,
+        ]);
+
+        Expedition::factory()->create([
+            'name' => 'JNE',
+            'external_code' => 'jne',
+            'is_active' => true,
+        ]);
+
+        $this->seedLaravoltDestinationRows();
+        $this->fakeSuccessfulShippingLookup(21000, 'REG', 'jne');
+
+        $this->actingAs($user)
+            ->post(route('cart.store', $merchandise), ['quantity' => 1]);
+
+        $response = $this->actingAs($user)
+            ->postJson(route('checkout.shipping-options'), [
+                'provinsi_code' => '35',
+                'provinsi_name' => 'Pilih Provinsi',
+                'kabupaten_code' => '3501',
+                'kabupaten_name' => 'Pilih Kabupaten/Kota',
+                'kecamatan_code' => '3501010',
+                'kecamatan_name' => 'Pilih Kecamatan',
+                'desa_code' => '3501010001',
+                'desa_name' => 'Pilih Desa/Kelurahan',
+                'postal_code' => '63511',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.destination.id', '68424')
+            ->assertJsonPath('data.groups.0.options.0.quote_id', 'jne|reg');
+    }
+
+    public function test_general_buyer_checkout_can_persist_selected_rajaongkir_destination()
+    {
+        $user = User::factory()->create([
+            'role' => 'umum',
+            'category_id' => null,
+            'email' => 'buyer-destination@gmail.com',
+        ]);
+
+        $merchCategory = MerchandiseCategory::factory()->create();
+        $merchandise = Merchandise::factory()->create([
+            'merchandise_category_id' => $merchCategory->id,
+            'price' => 120000,
+            'qty_stock' => 10,
+        ]);
+        $expedition = Expedition::factory()->create([
+            'external_code' => 'jne',
+            'fee' => 15000,
+        ]);
+
+        $this->fakeSuccessfulShippingLookup(15000, 'REG', 'jne');
+
+        $this->actingAs($user)
+            ->post(route('cart.store', $merchandise), ['quantity' => 1])
+            ->assertRedirect();
+
+        $response = $this->actingAs($user)
+            ->post(route('checkout.store'), [
+                'name' => 'Buyer Destination',
+                'email' => 'buyer-destination@gmail.com',
+                'no_hp' => '081234567890',
+                'shipping_destination_id' => '68424',
+                'shipping_destination_label' => 'Minomartani, Ngaglik, Kabupaten Sleman, DI Yogyakarta, 55581',
+                'provinsi_name' => 'DI Yogyakarta',
+                'kabupaten_name' => 'Kabupaten Sleman',
+                'kecamatan_name' => 'Ngaglik',
+                'desa_name' => 'Minomartani',
+                'alamat_lengkap' => 'Jl. Palagan No. 7',
+                'selected_shipping_option' => 'jne|reg',
+                'postal_code' => '55581',
+            ]);
+
+        $order = Order::first();
+
+        $response->assertRedirect(route('orders.show', $order));
+        $this->assertDatabaseHas('user_details', [
+            'user_id' => $user->id,
+            'provinsi_code' => '',
+            'kabupaten_code' => '',
+            'kecamatan_code' => '',
+            'desa_code' => '',
+            'provinsi_name' => 'DI Yogyakarta',
+            'kabupaten_name' => 'Kabupaten Sleman',
+            'kecamatan_name' => 'Ngaglik',
+            'desa_name' => 'Minomartani',
+            'alamat_lengkap' => 'Jl. Palagan No. 7',
+        ]);
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'shipping_destination_id' => '68424',
+            'recipient_name' => 'Buyer Destination',
+            'full_address' => 'Jl. Palagan No. 7, Minomartani, Ngaglik, Kabupaten Sleman, DI Yogyakarta',
+            'expedition_id' => $expedition->id,
+        ]);
     }
 
     public function test_checkout_rejects_tampered_or_stale_shipping_quote()
@@ -415,6 +584,32 @@ class CheckoutFlowTest extends TestCase
                     'etd' => '2-3 day',
                 ]],
             ], 200),
+        ]);
+    }
+
+    protected function seedLaravoltDestinationRows()
+    {
+        Province::create([
+            'code' => '35',
+            'name' => 'JAWA TIMUR',
+        ]);
+
+        City::create([
+            'code' => '3501',
+            'province_code' => '35',
+            'name' => 'KABUPATEN PACITAN',
+        ]);
+
+        District::create([
+            'code' => '3501010',
+            'city_code' => '3501',
+            'name' => 'PACITAN',
+        ]);
+
+        Village::create([
+            'code' => '3501010001',
+            'district_code' => '3501010',
+            'name' => 'BALEHARJO',
         ]);
     }
 }

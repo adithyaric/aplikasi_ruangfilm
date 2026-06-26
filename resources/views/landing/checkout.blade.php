@@ -46,49 +46,57 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div class="field-group !mb-0">
-                                <label class="field-label">Provinsi</label>
-                                <select name="provinsi_code" id="provinsi" class="field-input" required>
-                                    <option value="">Pilih Provinsi</option>
-                                    @foreach($provinsi as $province)
-                                    <option value="{{ $province->code }}" data-name="{{ $province->name }}"
-                                        {{ old('provinsi_code', $detail->provinsi_code ?? '') == $province->code ? 'selected' : '' }}>
-                                        {{ $province->name }}
-                                    </option>
-                                    @endforeach
-                                </select>
-                                <input type="hidden" name="provinsi_name" id="provinsi_name" value="{{ old('provinsi_name', $detail->provinsi_name ?? '') }}">
-                            </div>
-                            <div class="field-group !mb-0">
-                                <label class="field-label">Kabupaten / Kota</label>
-                                <select name="kabupaten_code" id="kabupaten" class="field-input" required>
-                                    <option value="">Pilih Kabupaten/Kota</option>
-                                </select>
-                                <input type="hidden" name="kabupaten_name" id="kabupaten_name" value="{{ old('kabupaten_name', $detail->kabupaten_name ?? '') }}">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div class="field-group !mb-0">
-                                <label class="field-label">Kecamatan</label>
-                                <select name="kecamatan_code" id="kecamatan" class="field-input" required>
-                                    <option value="">Pilih Kecamatan</option>
-                                </select>
-                                <input type="hidden" name="kecamatan_name" id="kecamatan_name" value="{{ old('kecamatan_name', $detail->kecamatan_name ?? '') }}">
-                            </div>
-                            <div class="field-group !mb-0">
-                                <label class="field-label">Desa / Kelurahan</label>
-                                <select name="desa_code" id="desa" class="field-input" required>
-                                    <option value="">Pilih Desa/Kelurahan</option>
-                                </select>
-                                <input type="hidden" name="desa_name" id="desa_name" value="{{ old('desa_name', $detail->desa_name ?? '') }}">
-                            </div>
-                        </div>
-
                         <div class="field-group !mb-0">
                             <label class="field-label">Alamat Lengkap</label>
                             <textarea name="alamat_lengkap" class="field-input" rows="3" required>{{ old('alamat_lengkap', $detail->alamat_lengkap ?? '') }}</textarea>
+                        </div>
+
+                        <div class="field-group !mb-0">
+                            <label class="field-label">Tujuan Pengiriman RajaOngkir</label>
+                            <div class="flex flex-col gap-3 md:flex-row">
+                                <input
+                                    type="text"
+                                    id="destination_keyword"
+                                    class="field-input flex-1"
+                                    placeholder="Cari kecamatan, kelurahan, kabupaten, atau kode pos"
+                                    value="{{ old('shipping_destination_label') }}">
+                                <button
+                                    type="button"
+                                    id="search-destination"
+                                    class="h-11 px-5 rounded-xl bg-white/10 border border-white/10 text-white text-sm font-semibold hover:bg-white/15 transition">
+                                    Cari Tujuan
+                                </button>
+                            </div>
+
+                            <input type="hidden" name="shipping_destination_id" id="shipping_destination_id" value="{{ old('shipping_destination_id') }}">
+                            <input type="hidden" name="shipping_destination_label" id="shipping_destination_label" value="{{ old('shipping_destination_label') }}">
+                            <input type="hidden" name="provinsi_name" id="provinsi_name" value="{{ old('provinsi_name', $detail->provinsi_name ?? '') }}">
+                            <input type="hidden" name="kabupaten_name" id="kabupaten_name" value="{{ old('kabupaten_name', $detail->kabupaten_name ?? '') }}">
+                            <input type="hidden" name="kecamatan_name" id="kecamatan_name" value="{{ old('kecamatan_name', $detail->kecamatan_name ?? '') }}">
+                            <input type="hidden" name="desa_name" id="desa_name" value="{{ old('desa_name', $detail->desa_name ?? '') }}">
+
+                            @error('shipping_destination_id')
+                            <div class="mt-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                                {{ $message }}
+                            </div>
+                            @enderror
+
+                            <div id="destination-feedback" class="mt-3 hidden rounded-2xl px-4 py-3 text-sm"></div>
+                            <div id="selected-destination" class="mt-3 hidden rounded-2xl border border-green-500/20 bg-green-500/5 px-4 py-4">
+                                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                    <div>
+                                        <div class="text-xs uppercase tracking-[0.2em] text-green-300">Tujuan dipilih</div>
+                                        <div id="selected-destination-label" class="mt-1 text-sm text-white"></div>
+                                    </div>
+                                    <button type="button" id="clear-destination" class="text-sm text-green-200 hover:text-white transition">
+                                        Ganti tujuan
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="destination-results" class="mt-3 hidden space-y-3"></div>
+                            <p class="text-xs text-gray-400 mt-3">
+                                Pilih tujuan langsung dari RajaOngkir supaya ongkir tidak bergantung ke mapping Laravolt.
+                            </p>
                         </div>
 
                         <div class="pt-2">
@@ -203,6 +211,21 @@
     const oldSelectedShippingOption = "{{ old('selected_shipping_option') }}";
     const checkoutSubtotal = Number(summarySubtotal.dataset.subtotal || 0);
     const isGeneralBuyer = @json($isGeneralBuyer);
+    const destinationKeywordInput = document.getElementById('destination_keyword');
+    const searchDestinationButton = document.getElementById('search-destination');
+    const destinationResults = document.getElementById('destination-results');
+    const destinationFeedback = document.getElementById('destination-feedback');
+    const selectedDestinationBox = document.getElementById('selected-destination');
+    const selectedDestinationLabel = document.getElementById('selected-destination-label');
+    const clearDestinationButton = document.getElementById('clear-destination');
+    const shippingDestinationIdInput = document.getElementById('shipping_destination_id');
+    const shippingDestinationLabelInput = document.getElementById('shipping_destination_label');
+    const provinceNameInput = document.getElementById('provinsi_name');
+    const cityNameInput = document.getElementById('kabupaten_name');
+    const districtNameInput = document.getElementById('kecamatan_name');
+    const villageNameInput = document.getElementById('desa_name');
+    const postalCodeInput = document.getElementById('postal_code');
+    const destinationStorageKey = "checkout_destination_{{ $user->id }}";
 
     function formatRupiah(value) {
         return 'Rp ' + Number(value || 0).toLocaleString('id-ID');
@@ -377,11 +400,319 @@
         });
     }
 
+    function hideDestinationFeedback() {
+        if (destinationFeedback) {
+            destinationFeedback.classList.add('hidden');
+        }
+    }
+
+    function showDestinationFeedback(message, type = 'info') {
+        if (!destinationFeedback) {
+            return;
+        }
+
+        const classes = {
+            info: 'border border-white/10 bg-white/5 text-gray-200',
+            error: 'border border-red-500/30 bg-red-500/10 text-red-200',
+            success: 'border border-green-500/30 bg-green-500/10 text-green-200',
+            warning: 'border border-yellow-500/30 bg-yellow-500/10 text-yellow-200',
+        };
+
+        destinationFeedback.className = 'mt-3 rounded-2xl px-4 py-3 text-sm ' + (classes[type] || classes.info);
+        destinationFeedback.textContent = message;
+        destinationFeedback.classList.remove('hidden');
+    }
+
+    function hideDestinationResults() {
+        if (!destinationResults) {
+            return;
+        }
+
+        destinationResults.innerHTML = '';
+        destinationResults.classList.add('hidden');
+    }
+
+    function persistSelectedDestination(destination) {
+        if (!isGeneralBuyer || !window.localStorage) {
+            return;
+        }
+
+        try {
+            window.localStorage.setItem(destinationStorageKey, JSON.stringify(destination));
+        } catch (error) {
+        }
+    }
+
+    function removePersistedDestination() {
+        if (!isGeneralBuyer || !window.localStorage) {
+            return;
+        }
+
+        try {
+            window.localStorage.removeItem(destinationStorageKey);
+        } catch (error) {
+        }
+    }
+
+    function buildDestinationPayload(destination) {
+        return {
+            id: String(destination.id || ''),
+            label: String(destination.label || ''),
+            province: String(destination.province || ''),
+            city: String(destination.city || ''),
+            district: String(destination.district || ''),
+            subdistrict: String(destination.subdistrict || destination.district || ''),
+            village: String(destination.village || ''),
+            zip_code: String(destination.zip_code || ''),
+        };
+    }
+
+    function applySelectedDestination(destination, options = {}) {
+        if (!isGeneralBuyer || !destinationKeywordInput) {
+            return;
+        }
+
+        const payload = buildDestinationPayload(destination);
+
+        destinationKeywordInput.value = payload.label;
+        shippingDestinationIdInput.value = payload.id;
+        shippingDestinationLabelInput.value = payload.label;
+        provinceNameInput.value = payload.province;
+        cityNameInput.value = payload.city;
+        districtNameInput.value = payload.subdistrict;
+        villageNameInput.value = payload.village;
+
+        if (payload.zip_code && (!postalCodeInput.value.trim() || options.forcePostalCode)) {
+            postalCodeInput.value = payload.zip_code;
+        }
+
+        if (selectedDestinationLabel && selectedDestinationBox) {
+            selectedDestinationLabel.textContent = payload.label;
+            selectedDestinationBox.classList.remove('hidden');
+        }
+
+        hideDestinationResults();
+        hideDestinationFeedback();
+
+        if (options.persist !== false) {
+            persistSelectedDestination(payload);
+        }
+
+        clearShippingOptions('Periksa ulang ongkir');
+    }
+
+    function clearSelectedDestination(preserveKeyword = false) {
+        if (!isGeneralBuyer) {
+            return;
+        }
+
+        shippingDestinationIdInput.value = '';
+        shippingDestinationLabelInput.value = '';
+        provinceNameInput.value = '';
+        cityNameInput.value = '';
+        districtNameInput.value = '';
+        villageNameInput.value = '';
+
+        if (!preserveKeyword && destinationKeywordInput) {
+            destinationKeywordInput.value = '';
+        }
+
+        if (selectedDestinationBox) {
+            selectedDestinationBox.classList.add('hidden');
+        }
+
+        hideDestinationResults();
+        removePersistedDestination();
+        clearShippingOptions('Periksa ulang ongkir');
+    }
+
+    function renderDestinationResults(results) {
+        if (!destinationResults) {
+            return;
+        }
+
+        destinationResults.innerHTML = '';
+
+        results.forEach(function(item) {
+            const button = document.createElement('button');
+            const title = document.createElement('div');
+            const meta = document.createElement('div');
+
+            button.type = 'button';
+            button.className = 'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left transition hover:border-purple-400/40 hover:bg-white/10';
+            button.dataset.id = item.id || '';
+            button.dataset.label = item.label || '';
+            button.dataset.province = item.province || '';
+            button.dataset.city = item.city || '';
+            button.dataset.district = item.district || '';
+            button.dataset.subdistrict = item.subdistrict || '';
+            button.dataset.village = item.village || '';
+            button.dataset.zipCode = item.zip_code || '';
+
+            title.className = 'text-white font-semibold';
+            title.textContent = item.label || '-';
+            meta.className = 'mt-1 text-xs text-gray-400';
+            meta.textContent = [item.village || '-', item.subdistrict || item.district || '-', item.city || '-'].join(' · ');
+
+            button.appendChild(title);
+            button.appendChild(meta);
+            destinationResults.appendChild(button);
+        });
+
+        destinationResults.classList.remove('hidden');
+    }
+
+    async function searchDestinations() {
+        if (!isGeneralBuyer || !destinationKeywordInput || !searchDestinationButton) {
+            return;
+        }
+
+        const keyword = destinationKeywordInput.value.trim();
+
+        if (!keyword) {
+            showDestinationFeedback('Masukkan kata kunci tujuan terlebih dahulu.', 'warning');
+            hideDestinationResults();
+            return;
+        }
+
+        searchDestinationButton.setAttribute('disabled', 'disabled');
+        searchDestinationButton.textContent = 'Mencari...';
+        hideDestinationFeedback();
+        hideDestinationResults();
+
+        try {
+            const response = await fetch("{{ route('checkout.destination-search') }}?keyword=" + encodeURIComponent(keyword), {
+                headers: {
+                    'Accept': 'application/json',
+                },
+            });
+            const payload = await response.json();
+
+            if (!response.ok) {
+                throw new Error(payload.message || 'Gagal mencari tujuan RajaOngkir.');
+            }
+
+            const results = payload.data || [];
+
+            if (!results.length) {
+                showDestinationFeedback('Tujuan RajaOngkir tidak ditemukan. Coba kata kunci lain.', 'warning');
+                return;
+            }
+
+            renderDestinationResults(results);
+        } catch (error) {
+            showDestinationFeedback(error.message || 'Gagal mencari tujuan RajaOngkir.', 'error');
+        } finally {
+            searchDestinationButton.removeAttribute('disabled');
+            searchDestinationButton.textContent = 'Cari Tujuan';
+        }
+    }
+
+    function restoreSelectedDestination() {
+        if (!isGeneralBuyer) {
+            return;
+        }
+
+        if (shippingDestinationIdInput && shippingDestinationIdInput.value) {
+            applySelectedDestination({
+                id: shippingDestinationIdInput.value,
+                label: shippingDestinationLabelInput.value,
+                province: provinceNameInput.value,
+                city: cityNameInput.value,
+                subdistrict: districtNameInput.value,
+                village: villageNameInput.value,
+                zip_code: postalCodeInput.value,
+            }, {
+                persist: true,
+            });
+
+            return;
+        }
+
+        if (!window.localStorage) {
+            return;
+        }
+
+        try {
+            const raw = window.localStorage.getItem(destinationStorageKey);
+
+            if (!raw) {
+                return;
+            }
+
+            const destination = JSON.parse(raw);
+
+            if (destination && destination.id) {
+                applySelectedDestination(destination, {
+                    persist: false,
+                    forcePostalCode: !postalCodeInput.value.trim(),
+                });
+            }
+        } catch (error) {
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         attachShippingReset('#postal_code, textarea[name="alamat_lengkap"]');
 
         if (isGeneralBuyer) {
-            attachShippingReset('#provinsi, #kabupaten, #kecamatan, #desa, input[name="name"], input[name="email"], input[name="no_hp"]');
+            attachShippingReset('input[name="name"], input[name="email"], input[name="no_hp"]');
+            restoreSelectedDestination();
+
+            if (destinationKeywordInput) {
+                destinationKeywordInput.addEventListener('input', function() {
+                    if (shippingDestinationIdInput.value && this.value.trim() !== shippingDestinationLabelInput.value) {
+                        clearSelectedDestination(true);
+                    }
+                });
+
+                destinationKeywordInput.addEventListener('keydown', function(event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        searchDestinations();
+                    }
+                });
+            }
+
+            if (searchDestinationButton) {
+                searchDestinationButton.addEventListener('click', function() {
+                    searchDestinations();
+                });
+            }
+
+            if (clearDestinationButton) {
+                clearDestinationButton.addEventListener('click', function() {
+                    clearSelectedDestination();
+                    hideDestinationFeedback();
+                });
+            }
+
+            if (destinationResults) {
+                destinationResults.addEventListener('click', function(event) {
+                    const button = event.target.closest('button[data-id]');
+
+                    if (!button) {
+                        return;
+                    }
+
+                    applySelectedDestination({
+                        id: button.dataset.id,
+                        label: button.dataset.label,
+                        province: button.dataset.province,
+                        city: button.dataset.city,
+                        district: button.dataset.district,
+                        subdistrict: button.dataset.subdistrict,
+                        village: button.dataset.village,
+                        zip_code: button.dataset.zipCode,
+                    }, {
+                        forcePostalCode: !postalCodeInput.value.trim(),
+                    });
+                });
+            }
+
+            if (oldSelectedShippingOption && shippingDestinationIdInput.value) {
+                setTimeout(loadShippingOptions, 250);
+            }
         }
 
         if (!isGeneralBuyer) {
@@ -393,43 +724,4 @@
         loadShippingOptions();
     });
 </script>
-
-@if($isGeneralBuyer)
-<script>
-    const existingKabupaten = "{{ old('kabupaten_code', $detail->kabupaten_code ?? '') }}";
-    const existingKecamatan = "{{ old('kecamatan_code', $detail->kecamatan_code ?? '') }}";
-    const existingDesaCode = "{{ old('desa_code', $detail->desa_code ?? '') }}";
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const selectedProv = document.getElementById('provinsi')?.value;
-
-        if (selectedProv) {
-            loadKabupaten(selectedProv, existingKabupaten || null);
-        }
-
-        if (existingKabupaten) {
-            setTimeout(function() {
-                document.getElementById('kabupaten_name').value = document.querySelector('#kabupaten option:checked')?.textContent || '';
-                loadKecamatan(existingKabupaten, existingKecamatan || null);
-            }, 300);
-        }
-
-        if (existingKecamatan) {
-            setTimeout(function() {
-                document.getElementById('kecamatan_name').value = document.querySelector('#kecamatan option:checked')?.textContent || '';
-                loadDesa(existingKecamatan, existingDesaCode || null);
-            }, 600);
-        }
-
-        if (existingDesaCode) {
-            setTimeout(function() {
-                document.getElementById('desa_name').value = document.querySelector('#desa option:checked')?.textContent || '';
-                if (oldSelectedShippingOption) {
-                    loadShippingOptions();
-                }
-            }, 900);
-        }
-    });
-</script>
-@endif
 @endpush

@@ -77,16 +77,17 @@
             justify-content: center;
             padding: 0.75rem 1rem;
             border-radius: 1.5rem;
-            background: rgba(24, 18, 43, 0.65);
+            background: linear-gradient(135deg, rgba(111, 107, 137, 0.78), rgba(76, 72, 101, 0.68));
             backdrop-filter: blur(14px);
-            border: 1px solid rgba(192, 132, 252, 0.2);
+            border: 1px solid rgba(203, 213, 225, 0.14);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
             transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
         }
 
         .partner-logo-card:hover {
             transform: translateY(-2px) scale(1.04);
-            box-shadow: 0 0 25px rgba(109, 40, 217, 0.35);
-            border-color: rgba(139, 92, 246, 0.5);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 25px rgba(109, 40, 217, 0.28);
+            border-color: rgba(203, 213, 225, 0.28);
         }
 
         .partner-logo-card img {
@@ -101,6 +102,13 @@
 
         .partner-logo-card:hover img {
             filter: brightness(1.05) opacity(1);
+        }
+
+        .sponsor-section .glass-card {
+            background: linear-gradient(135deg, rgba(45, 43, 66, 0.72), rgba(18, 16, 35, 0.82));
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            backdrop-filter: blur(14px);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
 
         @keyframes partner-marquee-left {
