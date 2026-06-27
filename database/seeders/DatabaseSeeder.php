@@ -27,6 +27,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
+        $this->call([
+            ProgramCategorySeeder::class,
+            ProgramSeeder::class,
+        ]);
+
         $filmCategories = collect([
             [
                 'name' => 'Umum Nasional',

@@ -21,14 +21,40 @@
             <li class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
                 <a href="{{ route('dashboard') }}"><i class="fa fa-tachometer"></i> <span>Dashboard</span></a>
             </li>
-            <li class="{{ request()->routeIs('categories.index') ? 'active' : '' }}">
+            <li class="header" style="color:#d8b4fe;background-color:rgba(124,58,237,0.16);border-left:3px solid #a855f7;">MASTER DATA</li>
+            <li class="{{ request()->routeIs('categories.*') ? 'active' : '' }}">
                 <a href="{{ route('categories.index') }}"><i class="fa fa-film"></i> <span>Kategori Film</span></a>
             </li>
-            <li class="{{ request()->routeIs('merchandise-categories.*') ? 'active' : '' }}">
-                <a href="{{ route('merchandise-categories.index') }}"><i class="fa fa-tags"></i> <span>Kategori Merchandise</span></a>
+            <li class="treeview {{ request()->routeIs('program-categories.*') || request()->routeIs('admin-programs.*') ? 'active menu-open' : '' }}">
+                <a href="#">
+                    <i class="fa fa-calendar"></i> <span>Data Program</span>
+                    <i class="fa fa-angle-left pull-right"></i>
+                </a>
+                <ul class="treeview-menu" style="{{ request()->routeIs('program-categories.*') || request()->routeIs('admin-programs.*') ? 'display:block;' : '' }}">
+                    <li class="{{ request()->routeIs('program-categories.*') ? 'active' : '' }}">
+                        <a href="{{ route('program-categories.index') }}"><i class="fa fa-circle-o"></i> Kategori Program</a>
+                    </li>
+                    <li class="{{ request()->routeIs('admin-programs.*') ? 'active' : '' }}">
+                        <a href="{{ route('admin-programs.index') }}"><i class="fa fa-circle-o"></i> Program Festival</a>
+                    </li>
+                </ul>
             </li>
-            <li class="{{ request()->routeIs('admin-merchandises.*') ? 'active' : '' }}">
-                <a href="{{ route('admin-merchandises.index') }}"><i class="fa fa-dropbox"></i> <span>Merchandise</span></a>
+            <li class="treeview {{ request()->routeIs('merchandise-categories.*') || request()->routeIs('admin-merchandises.*') || request()->routeIs('admin.orders.*') ? 'active menu-open' : '' }}">
+                <a href="#">
+                    <i class="fa fa-dropbox"></i> <span>Data Merchandise</span>
+                    <i class="fa fa-angle-left pull-right"></i>
+                </a>
+                <ul class="treeview-menu" style="{{ request()->routeIs('merchandise-categories.*') || request()->routeIs('admin-merchandises.*') ? 'display:block;' : '' }}">
+                    <li class="{{ request()->routeIs('merchandise-categories.*') ? 'active' : '' }}">
+                        <a href="{{ route('merchandise-categories.index') }}"><i class="fa fa-circle-o"></i> Kategori Merchandise</a>
+                    </li>
+                    <li class="{{ request()->routeIs('admin-merchandises.*') ? 'active' : '' }}">
+                        <a href="{{ route('admin-merchandises.index') }}"><i class="fa fa-circle-o"></i> Merchandise</a>
+                    </li>
+                    <li class="{{ request()->routeIs('admin.orders.*') ? 'active' : '' }}">
+                        <a href="{{ route('admin.orders.index') }}"><i class="fa fa-credit-card"></i> <span>Invoice Merchandise</span></a>
+                    </li>
+                </ul>
             </li>
             <li class="{{ request()->routeIs('expeditions.*') ? 'active' : '' }}">
                 <a href="{{ route('expeditions.index') }}"><i class="fa fa-truck"></i> <span>Expedisi</span></a>
@@ -36,14 +62,12 @@
             <li class="{{ request()->routeIs('bank-accounts.*') ? 'active' : '' }}">
                 <a href="{{ route('bank-accounts.index') }}"><i class="fa fa-bank"></i> <span>Rekening</span></a>
             </li>
+            <li class="header" style="color:#d8b4fe;background-color:rgba(124,58,237,0.16);border-left:3px solid #a855f7;">OPERASIONAL</li>
             <li class="{{ request()->routeIs('film.*') ? 'active' : '' }}">
                 <a href="{{ route('film.index') }}"><i class="fa fa-file-text"></i> <span>Submission</span></a>
             </li>
             <li class="{{ request()->routeIs('review.*') ? 'active' : '' }}">
                 <a href="{{ route('review.index') }}"><i class="fa fa-check-square-o"></i> <span>Review Submission</span></a>
-            </li>
-            <li class="{{ request()->routeIs('admin.orders.*') ? 'active' : '' }}">
-                <a href="{{ route('admin.orders.index') }}"><i class="fa fa-credit-card"></i> <span>Invoice Merchandise</span></a>
             </li>
             <li class="{{ request()->routeIs('users.index.author') || request()->routeIs('users.show') ? 'active' : '' }}">
                 <a href="{{ route('users.index.author') }}"><i class="fa fa-group"></i> <span>Data Peserta</span></a>
@@ -51,6 +75,7 @@
             <li class="{{ request()->routeIs('users.index') || request()->routeIs('users.index.kurator') ? 'active' : '' }}">
                 <a href="{{ route('users.index') }}"><i class="fa fa-user"></i> <span>Data Pengguna</span></a>
             </li>
+            <li class="header" style="color:#d8b4fe;background-color:rgba(124,58,237,0.16);border-left:3px solid #a855f7;">KONFIGURASI</li>
             <li class="{{ request()->routeIs('settingIndex') ? 'active' : '' }}">
                 <a href="{{ route('settingIndex') }}"><i class="fa fa-gear"></i> <span>Setting Submission</span></a>
             </li>

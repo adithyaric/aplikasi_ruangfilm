@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminMerchandiseController;
+use App\Http\Controllers\AdminProgramController;
 use App\Http\Controllers\BankAccountController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
@@ -10,8 +11,10 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpeditionController;
 use App\Http\Controllers\FilmController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\LandingProgramController;
 use App\Http\Controllers\MerchandiseCategoryController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ProgramCategoryController;
 use App\Http\Controllers\SubmissionReviewController;
 use App\Http\Controllers\SubmissionSettingController;
 use App\Http\Controllers\UserController;
@@ -35,6 +38,8 @@ use Laravolt\Indonesia\Models\Province;
 // Landing
 Route::get('/', [LandingController::class, 'home'])->name('landing.home');
 Route::get('/program', [LandingController::class, 'program'])->name('landing.program');
+Route::get('/programs', [LandingProgramController::class, 'index'])->name('programs.index');
+Route::get('/programs/{program:slug}', [LandingProgramController::class, 'show'])->name('programs.show');
 Route::get('/umum', function () {
     return view('landing.kategori.umum');
 });
@@ -152,6 +157,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/expeditions/origin/rajaongkir', [ExpeditionController::class, 'updateOriginFromRajaOngkir'])->name('expeditions.origin.rajaongkir');
     Route::resource('/merchandise-categories', MerchandiseCategoryController::class)->except('show');
     Route::resource('/admin-merchandises', AdminMerchandiseController::class)->except('show');
+    Route::resource('/program-categories', ProgramCategoryController::class)->except('show');
+    Route::resource('/admin-programs', AdminProgramController::class)->except('show');
     Route::resource('/expeditions', ExpeditionController::class)->except('show');
     Route::resource('/bank-accounts', BankAccountController::class)->except('show');
 });

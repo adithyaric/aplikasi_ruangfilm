@@ -5,7 +5,7 @@
 <!-- ================================================== -->
 <!-- SECTION: KOMPETISI FILM -->
 <!-- ================================================== -->
-<section class="max-w-7xl mx-auto px-6 md:px-10 py-24 md:py-28 competition-section">
+<section id="competition-section" class="max-w-7xl mx-auto px-6 md:px-10 py-24 md:py-28 competition-section">
     <div class="fade-up">
         <p class="text-purple-400 text-sm md:text-base uppercase tracking-wider font-semibold mb-2">
             FILM COMPETITION

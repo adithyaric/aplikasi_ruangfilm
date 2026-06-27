@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Film;
 use App\Models\Merchandise;
 use App\Models\MerchandiseCategory;
+use App\Models\ProgramCategory;
 use App\Models\SubmissionSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -70,6 +71,7 @@ class LandingController extends Controller
         $setting = SubmissionSetting::current();
         $completedPeriod = $this->completedPeriod();
         $competitionCategories = $this->buildCompetitionCategories();
+        $programCategories = $this->buildProgramCategories();
 
         $juryMembers = User::with('category')
             ->where('role', 'juri')
@@ -109,6 +111,7 @@ class LandingController extends Controller
         return [
             'activeLandingSetting' => $setting,
             'competitionCategories' => $competitionCategories,
+            'programCategories' => $programCategories,
             'juryMembers' => $juryMembers,
             'timelineItems' => $this->buildTimelineItems($setting),
             'boardMembers' => collect(optional($setting)->festival_board ?: [])->filter(function ($member) {
@@ -254,5 +257,15 @@ class LandingController extends Controller
                 'resolved_detail_route' => '/ekshibisi',
             ],
         ]);
+    }
+
+    protected function buildProgramCategories()
+    {
+        return ProgramCategory::active()
+            ->with(['programs' => function ($query) {
+                $query->active()->ordered();
+            }])
+            ->ordered()
+            ->get();
     }
 }

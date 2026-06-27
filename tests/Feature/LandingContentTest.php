@@ -7,6 +7,8 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Film;
 use App\Models\Merchandise;
+use App\Models\Program;
+use App\Models\ProgramCategory;
 use App\Models\SubmissionSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -119,7 +121,7 @@ class LandingContentTest extends TestCase
         $response = $this->get('/')
             ->assertOk();
 
-        preg_match('/<section class="max-w-7xl mx-auto px-6 md:px-10 py-24 md:py-28 competition-section">.*?<\/section>/s', $response->getContent(), $matches);
+        preg_match('/<section[^>]*competition-section[^>]*>.*?<\/section>/s', $response->getContent(), $matches);
 
         $this->assertNotEmpty($matches);
         $this->assertStringContainsString('data-target="2"', $matches[0]);
@@ -134,9 +136,16 @@ class LandingContentTest extends TestCase
             'close_at' => now()->subMonth(),
         ]);
 
+        ProgramCategory::factory()->create([
+            'name' => 'Edukasi',
+            'slug' => 'edukasi',
+            'description' => 'Workshop dan diskusi.',
+        ]);
+
         $this->get('/')
             ->assertOk()
             ->assertSee('Program Highlight')
+            ->assertSee('Edukasi')
             ->assertSee('OFFICIAL COLLABORATOR')
             ->assertSee('OFFICIAL PARTNERS')
             ->assertDontSee('SPECIAL FEATURE PROGRAM')
@@ -144,12 +153,50 @@ class LandingContentTest extends TestCase
             ->assertDontSee('Kategori Kompetisi Film');
     }
 
-    public function test_program_page_shows_hardcoded_categories_jury_members_and_faq()
+    public function test_program_page_shows_database_driven_program_categories_jury_members_and_faq()
     {
-        $category = Category::factory()->create([
+        $filmCategory = Category::factory()->create([
             'name' => 'Pelajar Se - Jawa Timur',
             'slug' => 'pelajar-jawa-timur',
             'landing_summary' => 'Kompetisi film pelajar.',
+        ]);
+
+        $programCategory = ProgramCategory::factory()->create([
+            'name' => 'Edukasi',
+            'slug' => 'edukasi',
+            'description' => 'Workshop, diskusi, dan pengembangan talenta.',
+        ]);
+
+        Program::factory()->create([
+            'program_category_id' => $programCategory->id,
+            'title' => 'Program Edukasi 01',
+            'slug' => 'program-edukasi-01',
+            'sort_order' => 1,
+        ]);
+        Program::factory()->create([
+            'program_category_id' => $programCategory->id,
+            'title' => 'Program Edukasi 02',
+            'slug' => 'program-edukasi-02',
+            'sort_order' => 2,
+        ]);
+        Program::factory()->create([
+            'program_category_id' => $programCategory->id,
+            'title' => 'Program Edukasi 03',
+            'slug' => 'program-edukasi-03',
+            'sort_order' => 3,
+        ]);
+        Program::factory()->create([
+            'program_category_id' => $programCategory->id,
+            'title' => 'Program Edukasi 04',
+            'slug' => 'program-edukasi-04',
+            'sort_order' => 4,
+        ]);
+        Program::factory()->create([
+            'program_category_id' => $programCategory->id,
+            'title' => 'Program Nonaktif',
+            'slug' => 'program-nonaktif',
+            'sort_order' => 5,
+            'is_active' => false,
         ]);
 
         SubmissionSetting::factory()->create([
@@ -159,11 +206,18 @@ class LandingContentTest extends TestCase
 
         User::factory()->role('juri')->create([
             'name' => 'Juri Pelajar',
-            'category_id' => $category->id,
+            'category_id' => $filmCategory->id,
         ]);
 
         $this->get('/program')
             ->assertOk()
+            ->assertSee('Edukasi')
+            ->assertSee('Program Edukasi 01')
+            ->assertSee('Program Edukasi 02')
+            ->assertSee('Program Edukasi 03')
+            ->assertDontSee('Program Edukasi 04')
+            ->assertDontSee('Program Nonaktif')
+            ->assertSee(route('programs.index', ['category' => 'edukasi']), false)
             ->assertSee('Pelajar Se - Jawa Timur')
             ->assertSee('Kompetisi film horor bagi pelajar SMA/SMK wilayah provinsi Jawa Timur.')
             ->assertSee('Juri Pelajar')
