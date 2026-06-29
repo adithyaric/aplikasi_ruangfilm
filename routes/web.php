@@ -142,12 +142,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/review/submissions', [SubmissionReviewController::class, 'index'])
         ->middleware('role:admin,adminsub,kurator,juri')
         ->name('review.index');
-    Route::patch('/review/submissions/{film}/curation', [SubmissionReviewController::class, 'updateCuration'])
-        ->middleware('role:admin,adminsub,kurator')
-        ->name('review.curation');
-    Route::patch('/review/submissions/{film}/jury-score', [SubmissionReviewController::class, 'updateJuryScore'])
-        ->middleware('role:admin,adminsub,juri')
-        ->name('review.jury-score');
+    Route::post('/review/submissions/start-curation', [SubmissionReviewController::class, 'startCuration'])
+        ->middleware('role:admin,adminsub')
+        ->name('review.start-curation');
+    Route::post('/review/submissions/official-selection', [SubmissionReviewController::class, 'setOfficialSelection'])
+        ->middleware('role:admin,adminsub')
+        ->name('review.official-selection');
+    Route::get('/review/submissions/{film}/{stage}/score', [SubmissionReviewController::class, 'score'])
+        ->middleware('role:admin,adminsub,kurator,juri')
+        ->name('review.score');
+    Route::patch('/review/submissions/{film}/{stage}/score', [SubmissionReviewController::class, 'storeScore'])
+        ->middleware('role:admin,adminsub,kurator,juri')
+        ->name('review.score.update');
+    Route::patch('/review/submissions/{film}/winner-rank', [SubmissionReviewController::class, 'updateWinnerRank'])
+        ->middleware('role:admin,adminsub')
+        ->name('review.winner-rank');
 });
 
 Route::middleware(['auth', 'role:admin'])->group(function () {

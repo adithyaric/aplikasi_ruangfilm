@@ -4,7 +4,8 @@
 $detail = $film->user->detail;
 $statusMap = [
     'pending' => ['label' => 'Menunggu Kurasi', 'color' => '#b87f00', 'bg' => '#fff8e0'],
-    'approved' => ['label' => 'Lolos Kurasi', 'color' => '#198754', 'bg' => '#e6f9ef'],
+    'under_review' => ['label' => 'Dalam Kurasi', 'color' => '#0c7c9f', 'bg' => '#e6f7fb'],
+    'approved' => ['label' => 'Official Selection', 'color' => '#198754', 'bg' => '#e6f9ef'],
     'rejected' => ['label' => 'Ditolak Kurator', 'color' => '#dc3545', 'bg' => '#fde8e8'],
     'winner' => ['label' => $film->winner_rank ?: 'Pemenang', 'color' => '#6f42c1', 'bg' => '#f0ebff'],
 ];
@@ -12,7 +13,7 @@ $s = $statusMap[$film->display_status] ?? ['label' => $film->display_status_labe
 $timelineSteps = [
     1 => 'Submission Dikirim',
     2 => 'Proses Kurasi',
-    3 => $film->curation_status === 'rejected' ? 'Ditolak Kurator' : 'Lolos Kurasi',
+    3 => $film->curation_status === 'rejected' ? 'Ditolak Kurator' : 'Official Selection',
     4 => $film->winner_rank ?: 'Hasil Juri',
 ];
 $currentStep = $film->winner_rank ? 4 : ($film->curation_status === 'approved' || $film->curation_status === 'rejected' ? 3 : 2);

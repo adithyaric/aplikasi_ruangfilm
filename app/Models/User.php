@@ -76,6 +76,11 @@ class User extends Authenticatable
         return $this->hasMany(JuryScore::class, 'jury_id');
     }
 
+    public function submissionReviews()
+    {
+        return $this->hasMany(SubmissionReview::class, 'reviewer_id');
+    }
+
     public function normalizedRole()
     {
         return Str::lower(trim((string) $this->role));

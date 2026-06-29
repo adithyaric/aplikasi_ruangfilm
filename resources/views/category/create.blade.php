@@ -65,6 +65,7 @@
                             <label>Gambar Kategori</label>
                             <input type="file" class="form-control" name="image" accept="image/*">
                         </div>
+                        @include('category.partials.rubric-fields')
                     </div><!-- /.box-body -->
 
                     <div class="box-footer">

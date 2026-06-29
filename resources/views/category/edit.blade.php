@@ -70,6 +70,7 @@
                                 <p class="help-block">Gambar saat ini: <a href="{{ $categories->image_url }}" target="_blank">Lihat</a></p>
                                 @endif
                             </div>
+                            @include('category.partials.rubric-fields')
                         </div><!-- /.box-body -->
 
                         <div class="box-footer">

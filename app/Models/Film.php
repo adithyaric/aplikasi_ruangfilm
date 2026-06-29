@@ -10,6 +10,7 @@ class Film extends Model
     use HasFactory;
 
     public const CURATION_PENDING = 'pending';
+    public const CURATION_UNDER_REVIEW = 'under_review';
     public const CURATION_APPROVED = 'approved';
     public const CURATION_REJECTED = 'rejected';
 
@@ -40,6 +41,21 @@ class Film extends Model
         return $this->hasMany(JuryScore::class);
     }
 
+    public function submissionReviews()
+    {
+        return $this->hasMany(SubmissionReview::class);
+    }
+
+    public function curationReviews()
+    {
+        return $this->submissionReviews()->stage(ReviewRubric::STAGE_CURATION);
+    }
+
+    public function juryReviews()
+    {
+        return $this->submissionReviews()->stage(ReviewRubric::STAGE_JURY);
+    }
+
     public function getDisplayStatusAttribute()
     {
         if ($this->winner_rank) {
@@ -54,10 +70,11 @@ class Film extends Model
         $status = $this->display_status;
 
         $labels = [
-            'pending'  => 'Menunggu Kurasi',
-            'approved' => 'Lolos Kurasi',
-            'rejected' => 'Ditolak Kurator',
-            'winner'   => $this->winner_rank ?: 'Pemenang',
+            'pending'      => 'Menunggu Kurasi',
+            'under_review' => 'Dalam Kurasi',
+            'approved'     => 'Official Selection',
+            'rejected'     => 'Ditolak Kurator',
+            'winner'       => $this->winner_rank ?: 'Pemenang',
         ];
 
         return $labels[$status] ?? ucfirst($status);
@@ -65,6 +82,22 @@ class Film extends Model
 
     public function averageScore()
     {
+        $juryAverage = $this->averageReviewScore(ReviewRubric::STAGE_JURY);
+
+        if ($juryAverage > 0) {
+            return $juryAverage;
+        }
+
         return round((float) $this->juryScores()->avg('score'), 2);
+    }
+
+    public function averageReviewScore($stage)
+    {
+        return round((float) $this->submissionReviews()->stage($stage)->avg('total_score'), 2);
+    }
+
+    public function reviewCount($stage)
+    {
+        return $this->submissionReviews()->stage($stage)->count();
     }
 }

@@ -69,7 +69,7 @@ class DashboardController extends Controller
         $title = 'Dashboard';
         $categories = Category::orderBy('name')->get();
         $totalFilm         = Film::count();
-        $dalamProses       = Film::where('curation_status', Film::CURATION_PENDING)->count();
+        $dalamProses       = Film::whereIn('curation_status', [Film::CURATION_PENDING, Film::CURATION_UNDER_REVIEW])->count();
         $officialSelection = Film::where('curation_status', Film::CURATION_APPROVED)->count();
         $ditolak           = Film::where('curation_status', Film::CURATION_REJECTED)->count();
         $winner            = Film::whereNotNull('winner_rank')->count();

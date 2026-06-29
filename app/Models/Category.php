@@ -21,6 +21,20 @@ class Category extends Model
         return $this->hasMany(Film::class);
     }
 
+    public function rubrics()
+    {
+        return $this->hasMany(ReviewRubric::class);
+    }
+
+    public function activeRubric($stage)
+    {
+        return $this->rubrics()
+            ->active()
+            ->forStage($stage)
+            ->with('groups.items')
+            ->first();
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
