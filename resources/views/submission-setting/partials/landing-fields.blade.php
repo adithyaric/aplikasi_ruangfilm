@@ -235,7 +235,7 @@
 
 <div class="form-group">
     <label>Film Pilihan untuk Featured Films</label>
-    <select name="last_year_featured_film_ids[]" class="form-control" multiple size="8">
+    <select name="last_year_featured_film_ids[]" class="form-control select2" multiple size="8" data-placeholder="Pilih film unggulan" style="width: 100%;">
         @foreach(($availableFeaturedFilms ?? collect()) as $film)
         <option value="{{ $film->id }}" {{ $selectedFeaturedFilmIds->contains($film->id) ? 'selected' : '' }}>
             {{ $film->name }}{{ $film->category ? ' - ' . $film->category->name : '' }}{{ $film->submissionSetting ? ' (' . $film->submissionSetting->name . ')' : '' }}

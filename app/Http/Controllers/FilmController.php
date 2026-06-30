@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Film;
+use App\Models\ReviewRubric;
 use App\Models\SubmissionSetting;
 use App\Models\UserDetail;
 use Illuminate\Http\Request;
@@ -16,6 +17,10 @@ class FilmController extends Controller
     {
         if ($redirect = $this->redirectGeneralBuyerAway()) {
             return $redirect;
+        }
+
+        if (auth()->user()->hasRole(['admin', 'adminsub', 'kurator', 'juri'])) {
+            return redirect()->route('review.index');
         }
 
         $title = 'Submission';
@@ -163,8 +168,18 @@ class FilmController extends Controller
         }
 
         $title = 'Detail Submission';
-        $film = Film::with(['user.category', 'user.detail', 'category', 'submissionSetting', 'juryScores.jury'])->findOrFail($id);
-        return view('film.show', compact('film', 'title'));
+        $film = Film::with([
+            'user.category',
+            'user.detail',
+            'category.rubrics.groups.items',
+            'submissionSetting',
+            'juryScores.jury',
+            'submissionReviews.reviewer',
+            'submissionReviews.scores',
+        ])->findOrFail($id);
+        $reviewStageLabels = ReviewRubric::stageLabels();
+
+        return view('film.show', compact('film', 'title', 'reviewStageLabels'));
     }
 
     public function edit($id)

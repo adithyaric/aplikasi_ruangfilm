@@ -148,11 +148,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/review/submissions/official-selection', [SubmissionReviewController::class, 'setOfficialSelection'])
         ->middleware('role:admin,adminsub')
         ->name('review.official-selection');
+    Route::patch('/review/submissions/{film}/status', [SubmissionReviewController::class, 'updateCurationStatus'])
+        ->middleware('role:admin,adminsub')
+        ->name('review.status');
     Route::get('/review/submissions/{film}/{stage}/score', [SubmissionReviewController::class, 'score'])
-        ->middleware('role:admin,adminsub,kurator,juri')
+        ->middleware('role:kurator,juri')
         ->name('review.score');
     Route::patch('/review/submissions/{film}/{stage}/score', [SubmissionReviewController::class, 'storeScore'])
-        ->middleware('role:admin,adminsub,kurator,juri')
+        ->middleware('role:kurator,juri')
         ->name('review.score.update');
     Route::patch('/review/submissions/{film}/winner-rank', [SubmissionReviewController::class, 'updateWinnerRank'])
         ->middleware('role:admin,adminsub')

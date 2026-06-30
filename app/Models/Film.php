@@ -80,6 +80,21 @@ class Film extends Model
         return $labels[$status] ?? ucfirst($status);
     }
 
+    public static function curationStatusLabels()
+    {
+        return [
+            static::CURATION_PENDING => 'Menunggu Kurasi',
+            static::CURATION_UNDER_REVIEW => 'Dalam Kurasi',
+            static::CURATION_APPROVED => 'Official Selection',
+            static::CURATION_REJECTED => 'Ditolak Kurator',
+        ];
+    }
+
+    public static function curationStatuses()
+    {
+        return array_keys(static::curationStatusLabels());
+    }
+
     public function averageScore()
     {
         $juryAverage = $this->averageReviewScore(ReviewRubric::STAGE_JURY);

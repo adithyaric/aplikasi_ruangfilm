@@ -9,6 +9,7 @@ use App\Models\SubmissionReview;
 use App\Models\SubmissionSetting;
 use App\Models\User;
 use App\Models\UserDetail;
+use Database\Seeders\RubrikPenilaianSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -170,6 +171,179 @@ class SubmissionReviewFlowTest extends TestCase
         ]);
     }
 
+    public function test_operational_roles_use_unified_submission_review_page()
+    {
+        $admin = User::factory()->role('admin')->create();
+
+        $this->actingAs($admin)
+            ->get(route('film.index'))
+            ->assertRedirect(route('review.index'));
+
+        $this->actingAs($admin)
+            ->get(route('review.index'))
+            ->assertOk()
+            ->assertSee('Submission & Review', false);
+    }
+
+    public function test_admin_cannot_score_in_curation_or_jury_stage()
+    {
+        $admin = User::factory()->role('admin')->create();
+        $category = Category::factory()->create();
+        $film = Film::factory()->create([
+            'category_id' => $category->id,
+            'curation_status' => Film::CURATION_UNDER_REVIEW,
+        ]);
+        $curationRubric = $this->createRubric($category, ReviewRubric::STAGE_CURATION, [
+            ['title' => 'Narasi', 'weight' => 10],
+        ]);
+        $curationItem = $curationRubric->groups()->first()->items()->first();
+
+        $this->actingAs($admin)
+            ->get(route('review.score', [$film, ReviewRubric::STAGE_CURATION]))
+            ->assertRedirect(route('dashboard'));
+
+        $this->actingAs($admin)
+            ->patch(route('review.score.update', [$film, ReviewRubric::STAGE_CURATION]), [
+                'scores' => [$curationItem->id => 10],
+            ])
+            ->assertRedirect(route('dashboard'));
+
+        $film->update(['curation_status' => Film::CURATION_APPROVED]);
+
+        $juryRubric = $this->createRubric($category, ReviewRubric::STAGE_JURY, [
+            ['title' => 'After Taste', 'weight' => 1],
+        ]);
+        $juryItem = $juryRubric->groups()->first()->items()->first();
+
+        $this->actingAs($admin)
+            ->get(route('review.score', [$film, ReviewRubric::STAGE_JURY]))
+            ->assertRedirect(route('dashboard'));
+
+        $this->actingAs($admin)
+            ->patch(route('review.score.update', [$film, ReviewRubric::STAGE_JURY]), [
+                'scores' => [$juryItem->id => 9],
+            ])
+            ->assertRedirect(route('dashboard'));
+    }
+
+    public function test_review_index_hides_stage_selector_and_keeps_role_based_stage_defaults()
+    {
+        $curatorResponse = $this->actingAs(User::factory()->role('kurator')->create())
+            ->get(route('review.index', ['stage' => ReviewRubric::STAGE_JURY]));
+
+        $curatorResponse->assertOk()
+            ->assertDontSee('<label>Penilaian</label>', false);
+        $this->assertSame(ReviewRubric::STAGE_CURATION, $curatorResponse->viewData('stage'));
+
+        $juryResponse = $this->actingAs(User::factory()->role('juri')->create())
+            ->get(route('review.index', ['stage' => ReviewRubric::STAGE_CURATION]));
+
+        $juryResponse->assertOk()
+            ->assertDontSee('<label>Penilaian</label>', false);
+        $this->assertSame(ReviewRubric::STAGE_JURY, $juryResponse->viewData('stage'));
+
+        $adminResponse = $this->actingAs(User::factory()->role('admin')->create())
+            ->get(route('review.index', ['stage' => ReviewRubric::STAGE_JURY]));
+
+        $adminResponse->assertOk()
+            ->assertDontSee('<label>Penilaian</label>', false);
+        $this->assertSame(ReviewRubric::STAGE_JURY, $adminResponse->viewData('stage'));
+    }
+
+    public function test_admin_can_update_individual_film_status_and_clear_winner_rank()
+    {
+        $admin = User::factory()->role('admin')->create();
+        $film = Film::factory()->create([
+            'curation_status' => Film::CURATION_APPROVED,
+            'winner_rank' => 'Juara 1',
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('review.index'))
+            ->patch(route('review.status', $film), [
+                'curation_status' => Film::CURATION_REJECTED,
+            ])
+            ->assertRedirect(route('review.index'));
+
+        $film->refresh();
+
+        $this->assertSame(Film::CURATION_REJECTED, $film->curation_status);
+        $this->assertNull($film->winner_rank);
+    }
+
+    public function test_review_index_uses_effective_default_filters_for_curators()
+    {
+        $category = Category::factory()->create();
+        $previousPeriod = SubmissionSetting::factory()->create([
+            'open_at' => now()->subDays(10),
+            'close_at' => now()->subDays(5),
+        ]);
+        $currentPeriod = SubmissionSetting::factory()->create([
+            'open_at' => now()->subDay(),
+            'close_at' => now()->addDay(),
+        ]);
+        $currentFilm = Film::factory()->create([
+            'submission_setting_id' => $currentPeriod->id,
+            'category_id' => $category->id,
+            'curation_status' => Film::CURATION_UNDER_REVIEW,
+        ]);
+        Film::factory()->create([
+            'submission_setting_id' => $previousPeriod->id,
+            'category_id' => $category->id,
+            'curation_status' => Film::CURATION_UNDER_REVIEW,
+        ]);
+
+        $response = $this->actingAs(User::factory()->role('kurator')->create())
+            ->get(route('review.index'));
+
+        $response->assertOk();
+
+        $this->assertSame($currentPeriod->id, $response->viewData('selectedSubmissionSettingId'));
+        $this->assertNull($response->viewData('selectedCategoryId'));
+        $this->assertSame(Film::CURATION_UNDER_REVIEW, $response->viewData('selectedCurationStatus'));
+        $this->assertSame(ReviewRubric::STAGE_CURATION, $response->viewData('stage'));
+        $this->assertSame([$currentFilm->id], $response->viewData('films')->pluck('id')->all());
+    }
+
+    public function test_jury_review_index_only_lists_official_selection_films()
+    {
+        $category = Category::factory()->create();
+        $period = SubmissionSetting::factory()->create([
+            'open_at' => now()->subDay(),
+            'close_at' => now()->addDay(),
+        ]);
+        $approvedFilm = Film::factory()->create([
+            'name' => 'Backdoor',
+            'submission_setting_id' => $period->id,
+            'category_id' => $category->id,
+            'curation_status' => Film::CURATION_APPROVED,
+        ]);
+        Film::factory()->create([
+            'submission_setting_id' => $period->id,
+            'category_id' => $category->id,
+            'curation_status' => Film::CURATION_UNDER_REVIEW,
+        ]);
+
+        $response = $this->actingAs(User::factory()->role('juri')->create())
+            ->get(route('review.index'));
+
+        $response->assertOk();
+
+        $this->assertSame(Film::CURATION_APPROVED, $response->viewData('selectedCurationStatus'));
+        $this->assertSame(ReviewRubric::STAGE_JURY, $response->viewData('stage'));
+        $this->assertSame([$approvedFilm->id], $response->viewData('films')->pluck('id')->all());
+    }
+
+    public function test_review_index_empty_state_does_not_render_a_colspan_row()
+    {
+        $response = $this->actingAs(User::factory()->role('admin')->create())
+            ->get(route('review.index'));
+
+        $response->assertOk()
+            ->assertDontSee('Belum ada submission.</td>', false)
+            ->assertDontSee('colspan="', false);
+    }
+
     public function test_raw_rubric_scoring_stores_item_snapshots_and_total()
     {
         $category = Category::factory()->create();
@@ -255,6 +429,68 @@ class SubmissionReviewFlowTest extends TestCase
         $this->assertSame([$filmA->id, $filmB->id], $films->pluck('id')->all());
         $this->assertSame(90.0, (float) $films->first()->curation_average_score);
         $this->assertSame(2, $films->first()->curation_review_count);
+    }
+
+    public function test_review_index_displays_spreadsheet_columns_and_reviewer_totals()
+    {
+        $category = Category::factory()->create();
+        $period = SubmissionSetting::factory()->create();
+        $film = Film::factory()->create([
+            'submission_setting_id' => $period->id,
+            'category_id' => $category->id,
+            'curation_status' => Film::CURATION_UNDER_REVIEW,
+        ]);
+        $rubric = $this->createRubric($category, ReviewRubric::STAGE_CURATION, [
+            ['title' => 'Total Kesan', 'weight' => 10],
+        ]);
+        $item = $rubric->groups()->first()->items()->first();
+        $curator = User::factory()->role('kurator')->create(['name' => 'Kurator Satu']);
+
+        $this->actingAs($curator)->patch(route('review.score.update', [$film, ReviewRubric::STAGE_CURATION]), [
+            'scores' => [$item->id => 10],
+            'note' => 'Kuat',
+        ]);
+
+        $this->actingAs(User::factory()->role('admin')->create())
+            ->get(route('review.index', [
+                'submission_setting_id' => $period->id,
+                'category_id' => $category->id,
+                'stage' => ReviewRubric::STAGE_CURATION,
+            ]))
+            ->assertOk()
+            ->assertSee('Nama Tim/Komunitas Produksi')
+            ->assertSee('Total Kesan')
+            ->assertSee('Kurator Satu')
+            ->assertSee('100.00')
+            ->assertSee('Kuat');
+    }
+
+    public function test_film_show_displays_reviewer_breakdown()
+    {
+        $category = Category::factory()->create();
+        $film = Film::factory()->create([
+            'category_id' => $category->id,
+            'curation_status' => Film::CURATION_UNDER_REVIEW,
+        ]);
+        $rubric = $this->createRubric($category, ReviewRubric::STAGE_CURATION, [
+            ['title' => 'Narasi', 'weight' => 10],
+        ]);
+        $item = $rubric->groups()->first()->items()->first();
+        $curator = User::factory()->role('kurator')->create(['name' => 'Kurator Detail']);
+
+        $this->actingAs($curator)->patch(route('review.score.update', [$film, ReviewRubric::STAGE_CURATION]), [
+            'scores' => [$item->id => 9],
+            'note' => 'Detail catatan',
+        ]);
+
+        $this->actingAs(User::factory()->role('admin')->create())
+            ->get(route('film.show', $film))
+            ->assertOk()
+            ->assertSee('Rekap Penilaian')
+            ->assertSee('Kurator Detail')
+            ->assertSee('Narasi')
+            ->assertSee('90.00')
+            ->assertSee('Detail catatan');
     }
 
     public function test_only_under_review_films_can_be_scored_by_curators()
@@ -380,6 +616,44 @@ class SubmissionReviewFlowTest extends TestCase
         $this->assertSame('Juara 1', $filmA->fresh()->winner_rank);
         $this->assertSame('Juara 1', $filmC->fresh()->winner_rank);
         $this->assertNull($filmB->fresh()->winner_rank);
+    }
+
+    public function test_rubrik_penilaian_seeder_populates_existing_categories_from_xlsx_reference()
+    {
+        collect([
+            'umum-nasional' => 'Umum Nasional',
+            'pelajar-jawa-timur' => 'Pelajar Se - Jawa Timur',
+            'organisasi-komunitas-pacitan' => 'Organisasi & Komunitas Lokal Pacitan',
+            'pelajar-sd-smp-pacitan' => 'Pelajar SD - SMP Se-Pacitan',
+        ])->each(function ($name, $slug) {
+            Category::factory()->create([
+                'name' => $name,
+                'slug' => $slug,
+            ]);
+        });
+
+        $this->seed(RubrikPenilaianSeeder::class);
+
+        $umum = Category::where('slug', 'umum-nasional')->firstOrFail();
+        $pelajar = Category::where('slug', 'pelajar-jawa-timur')->firstOrFail();
+
+        $this->assertSame(11, $umum->activeRubric(ReviewRubric::STAGE_CURATION)->groups->flatMap(function ($group) {
+            return $group->items;
+        })->count());
+        $this->assertSame(12, $pelajar->activeRubric(ReviewRubric::STAGE_CURATION)->groups->flatMap(function ($group) {
+            return $group->items;
+        })->count());
+        $this->assertSame(6, $umum->activeRubric(ReviewRubric::STAGE_JURY)->groups->flatMap(function ($group) {
+            return $group->items;
+        })->count());
+        $this->assertDatabaseHas('review_rubric_items', [
+            'title' => 'Rasa Takut Yang Bermakna',
+            'weight' => 1,
+        ]);
+        $this->assertDatabaseHas('review_rubric_items', [
+            'title' => 'Pesan Moral',
+            'weight' => 15,
+        ]);
     }
 
     private function createRubric(Category $category, $stage, array $items)

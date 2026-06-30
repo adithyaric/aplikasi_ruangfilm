@@ -450,6 +450,10 @@ $currentStep = $film->winner_rank ? 4 : ($film->curation_status === 'approved' |
                     </div>
                 </div>
 
+                @if(auth()->user()->hasRole(['admin', 'adminsub', 'kurator', 'juri']))
+                @include('review.partials.film-review-breakdown', ['film' => $film, 'reviewStageLabels' => $reviewStageLabels ?? \App\Models\ReviewRubric::stageLabels()])
+                @endif
+
             </div><!-- /.box-body -->
         </div>
     </div>

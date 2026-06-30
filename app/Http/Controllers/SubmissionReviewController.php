@@ -16,48 +16,49 @@ class SubmissionReviewController extends Controller
     public function index(Request $request)
     {
         $stage = $this->resolveStage($request->input('stage'));
+        $selectedSubmissionSettingId = $this->resolveSubmissionSettingId($request);
+        $selectedCategoryId = $this->resolveCategoryId($request);
+        $selectedCurationStatus = $this->resolveCurationStatus($request);
+        $displayRubric = $this->displayRubric($selectedCategoryId, $stage);
         $query = Film::with([
             'user.category',
-            'category.rubrics',
+            'category.rubrics.groups.items',
             'submissionSetting',
             'juryScores',
             'submissionReviews.reviewer',
             'submissionReviews.scores',
         ]);
 
-        if ($request->filled('submission_setting_id')) {
-            $query->where('submission_setting_id', $request->submission_setting_id);
+        if ($selectedSubmissionSettingId) {
+            $query->where('submission_setting_id', $selectedSubmissionSettingId);
         }
 
-        if ($request->filled('category_id')) {
-            $query->where('category_id', $request->category_id);
+        if ($selectedCategoryId) {
+            $query->where('category_id', $selectedCategoryId);
         }
 
-        if ($request->filled('curation_status')) {
-            $query->where('curation_status', $request->curation_status);
-        }
-
-        if (auth()->user()->hasRole('kurator') && !$request->filled('curation_status')) {
-            $query->where('curation_status', Film::CURATION_UNDER_REVIEW);
-        }
-
-        if (auth()->user()->hasRole('juri')) {
-            $query->where('curation_status', Film::CURATION_APPROVED);
+        if ($selectedCurationStatus) {
+            $query->where('curation_status', $selectedCurationStatus);
         }
 
         $films = $this->sortFilmsByStage(
-            $this->attachReviewMetrics($query->latest()->get()),
+            $this->attachReviewMetrics($query->latest()->get(), $displayRubric, $stage),
             $stage
         );
 
         return view('review.index', [
             'title' => 'Review Submission',
             'films' => $films,
-            'selectionFilms' => $this->officialSelectionFilms($request),
             'submissionPeriods' => SubmissionSetting::orderByDesc('open_at')->get(),
             'categories' => Category::orderBy('sort_order')->orderBy('name')->get(),
+            'statusLabels' => Film::curationStatusLabels(),
+            'selectedSubmissionSettingId' => $selectedSubmissionSettingId,
+            'selectedCategoryId' => $selectedCategoryId,
+            'selectedCurationStatus' => $selectedCurationStatus,
             'stage' => $stage,
             'stageLabels' => ReviewRubric::stageLabels(),
+            'displayRubric' => $displayRubric,
+            'rubricItems' => $this->rubricItems($displayRubric),
         ]);
     }
 
@@ -121,6 +122,27 @@ class SubmissionReviewController extends Controller
         ]);
 
         return back()->with('success', 'Official Selection berhasil diperbarui.');
+    }
+
+    public function updateCurationStatus(Request $request, Film $film)
+    {
+        abort_unless(auth()->user()->hasRole(['admin', 'adminsub']), 403);
+
+        $validated = $request->validate([
+            'curation_status' => 'required|string|in:' . implode(',', Film::curationStatuses()),
+        ]);
+
+        $attributes = [
+            'curation_status' => $validated['curation_status'],
+        ];
+
+        if ($validated['curation_status'] !== Film::CURATION_APPROVED) {
+            $attributes['winner_rank'] = null;
+        }
+
+        $film->update($attributes);
+
+        return back()->with('success', 'Status film berhasil diperbarui.');
     }
 
     public function score(Film $film, $stage)
@@ -277,10 +299,16 @@ class SubmissionReviewController extends Controller
 
     protected function resolveStage($stage)
     {
+        if (auth()->user()->hasRole('kurator')) {
+            return ReviewRubric::STAGE_CURATION;
+        }
+
+        if (auth()->user()->hasRole('juri')) {
+            return ReviewRubric::STAGE_JURY;
+        }
+
         if (!$stage) {
-            return auth()->user()->hasRole('juri')
-                ? ReviewRubric::STAGE_JURY
-                : ReviewRubric::STAGE_CURATION;
+            return ReviewRubric::STAGE_CURATION;
         }
 
         abort_unless(in_array($stage, ReviewRubric::stages(), true), 404);
@@ -288,14 +316,43 @@ class SubmissionReviewController extends Controller
         return $stage;
     }
 
+    protected function resolveSubmissionSettingId(Request $request)
+    {
+        if ($request->query->has('submission_setting_id')) {
+            return $request->input('submission_setting_id') ?: null;
+        }
+
+        return optional(SubmissionSetting::current())->getKey();
+    }
+
+    protected function resolveCategoryId(Request $request)
+    {
+        return $request->input('category_id') ?: null;
+    }
+
+    protected function resolveCurationStatus(Request $request)
+    {
+        if (auth()->user()->hasRole('juri')) {
+            return Film::CURATION_APPROVED;
+        }
+
+        if ($request->query->has('curation_status')) {
+            return $request->input('curation_status') ?: null;
+        }
+
+        return auth()->user()->hasRole('kurator')
+            ? Film::CURATION_UNDER_REVIEW
+            : null;
+    }
+
     protected function authorizeScoringRole($stage)
     {
         if ($stage === ReviewRubric::STAGE_CURATION) {
-            abort_unless(auth()->user()->hasRole(['admin', 'adminsub', 'kurator']), 403);
+            abort_unless(auth()->user()->hasRole('kurator'), 403);
             return;
         }
 
-        abort_unless(auth()->user()->hasRole(['admin', 'adminsub', 'juri']), 403);
+        abort_unless(auth()->user()->hasRole('juri'), 403);
     }
 
     protected function scoreBlockReason(Film $film, $stage)
@@ -322,9 +379,33 @@ class SubmissionReviewController extends Controller
         return $film->category->activeRubric($stage);
     }
 
-    protected function attachReviewMetrics($films)
+    protected function displayRubric($categoryId, $stage)
     {
-        return $films->map(function ($film) {
+        if (!$categoryId) {
+            return null;
+        }
+
+        $category = Category::find($categoryId);
+
+        return $category ? $category->activeRubric($stage) : null;
+    }
+
+    protected function rubricItems(ReviewRubric $rubric = null)
+    {
+        if (!$rubric) {
+            return collect();
+        }
+
+        return $rubric->groups->flatMap(function ($group) {
+            return $group->items;
+        })->values();
+    }
+
+    protected function attachReviewMetrics($films, ReviewRubric $displayRubric = null, $stage = null)
+    {
+        $rubricItems = $this->rubricItems($displayRubric);
+
+        return $films->map(function ($film) use ($rubricItems, $stage) {
             $curationReviews = $film->submissionReviews->where('stage', ReviewRubric::STAGE_CURATION);
             $juryReviews = $film->submissionReviews->where('stage', ReviewRubric::STAGE_JURY);
 
@@ -334,8 +415,43 @@ class SubmissionReviewController extends Controller
                 ? round((float) $juryReviews->avg('total_score'), 2)
                 : round((float) $film->juryScores->avg('score'), 2);
             $film->jury_review_count = $juryReviews->count() ?: $film->juryScores->count();
+            $film->rubric_item_summaries = $this->itemSummaries($film, $stage, $rubricItems);
 
             return $film;
+        });
+    }
+
+    protected function itemSummaries(Film $film, $stage, $items)
+    {
+        if (!$stage || $items->isEmpty()) {
+            return collect();
+        }
+
+        $stageReviews = $film->submissionReviews->where('stage', $stage);
+
+        return $items->mapWithKeys(function ($item) use ($stageReviews) {
+            $reviewerScores = $stageReviews->map(function ($review) use ($item) {
+                $score = $review->scores->firstWhere('review_rubric_item_id', $item->id);
+
+                if (!$score) {
+                    return null;
+                }
+
+                return [
+                    'reviewer' => optional($review->reviewer)->name ?: 'Reviewer',
+                    'score' => (float) $score->score,
+                    'weighted_score' => (float) $score->weighted_score,
+                    'total_score' => (float) $review->total_score,
+                ];
+            })->filter()->values();
+
+            return [
+                $item->id => [
+                    'avg_score' => $reviewerScores->avg('score'),
+                    'avg_weighted_score' => $reviewerScores->avg('weighted_score'),
+                    'reviewers' => $reviewerScores,
+                ],
+            ];
         });
     }
 
@@ -350,29 +466,4 @@ class SubmissionReviewController extends Controller
         })->values();
     }
 
-    protected function officialSelectionFilms(Request $request)
-    {
-        if (!auth()->user()->hasRole(['admin', 'adminsub'])
-            || !$request->filled('submission_setting_id')
-            || !$request->filled('category_id')) {
-            return collect();
-        }
-
-        $films = Film::with([
-            'user.category',
-            'category',
-            'submissionReviews.reviewer',
-            'submissionReviews.scores',
-            'juryScores',
-        ])
-            ->where('submission_setting_id', $request->submission_setting_id)
-            ->where('category_id', $request->category_id)
-            ->whereIn('curation_status', [Film::CURATION_UNDER_REVIEW, Film::CURATION_APPROVED])
-            ->get();
-
-        return $this->sortFilmsByStage(
-            $this->attachReviewMetrics($films),
-            ReviewRubric::STAGE_CURATION
-        );
-    }
 }
