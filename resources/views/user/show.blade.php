@@ -188,17 +188,6 @@
 
                                         @foreach($films as $film)
 
-                                        @php
-                                        $statusMap = [
-                                        1 => 'Submitted',
-                                        2 => 'Verified',
-                                        3 => 'Under Review',
-                                        4 => 'Official Selection',
-                                        5 => 'Not Selected',
-                                        6 => 'Winner'
-                                        ];
-                                        @endphp
-
                                         <tr>
 
                                             <td>{{ $loop->iteration }}</td>
@@ -274,16 +263,15 @@
                                             <td style="vertical-align: middle; text-align:center;">
                                                 @php
                                                 $statusMap = [
-                                                1 => ['label' => 'Submitted', 'color' => '#6c757d', 'bg' => '#f0f0f0'],
-                                                2 => ['label' => 'Verified', 'color' => '#0d6efd', 'bg' => '#e7f1ff'],
-                                                3 => ['label' => 'Under Review', 'color' => '#e6a800', 'bg' => '#fff8e0'],
-                                                4 => ['label' => 'Official Selection', 'color' => '#198754', 'bg' => '#e6f9ef'],
-                                                5 => ['label' => 'Not Selected', 'color' => '#dc3545', 'bg' => '#fde8e8'],
-                                                6 => ['label' => 'Winner', 'color' => '#6f42c1', 'bg' => '#f0ebff'],
+                                                'under_review' => ['label' => 'Dalam Kurasi', 'color' => '#0c7c9f', 'bg' => '#e6f7fb'],
+                                                'pending' => ['label' => 'Dalam Penentuan', 'color' => '#b87f00', 'bg' => '#fff8e0'],
+                                                'approved' => ['label' => 'Official Selection', 'color' => '#198754', 'bg' => '#e6f9ef'],
+                                                'rejected' => ['label' => 'Ditolak Kurator', 'color' => '#dc3545', 'bg' => '#fde8e8'],
+                                                'winner' => ['label' => $film->winner_rank ?: 'Pemenang', 'color' => '#6f42c1', 'bg' => '#f0ebff'],
                                                 ];
 
-                                                $s = $statusMap[$film->status] ?? [
-                                                'label' => $film->status,
+                                                $s = $statusMap[$film->display_status] ?? [
+                                                'label' => $film->display_status_label,
                                                 'color' => '#888',
                                                 'bg' => '#f5f5f5'
                                                 ];

@@ -112,6 +112,8 @@ class SubmissionSettingController extends Controller
 
     protected function validatePeriod(Request $request, $bag = null)
     {
+        $request->merge($this->normalizePeriodDateTimes($request));
+
         $rules = [
             'name' => 'required|string|max:255',
             'open_at' => 'required|date',
@@ -125,6 +127,31 @@ class SubmissionSettingController extends Controller
         return $bag
             ? $request->validateWithBag($bag, $rules, $messages)
             : $request->validate($rules, $messages);
+    }
+
+    protected function normalizePeriodDateTimes(Request $request)
+    {
+        return [
+            'open_at' => $this->combineDateAndTime(
+                $request->input('open_at_date'),
+                $request->input('open_at_time'),
+                $request->input('open_at')
+            ),
+            'close_at' => $this->combineDateAndTime(
+                $request->input('close_at_date'),
+                $request->input('close_at_time'),
+                $request->input('close_at')
+            ),
+        ];
+    }
+
+    protected function combineDateAndTime($date, $time, $fallback = null)
+    {
+        if (filled($date) && filled($time)) {
+            return trim($date . ' ' . $time);
+        }
+
+        return $fallback;
     }
 
     protected function validateLanding(Request $request, $bag = null)

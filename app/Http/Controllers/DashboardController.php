@@ -36,9 +36,15 @@ class DashboardController extends Controller
 
         // Stat cards
         $totalFilm         = Film::where('user_id', $userId)->count();
-        $dalamProses       = Film::where('user_id', $userId)->whereIn('status', [1, 2, 3])->count();
-        $officialSelection = Film::where('user_id', $userId)->where('status', 4)->count();
-        $ditolak           = Film::where('user_id', $userId)->where('status', 5)->count();
+        $dalamProses       = Film::where('user_id', $userId)
+            ->whereIn('curation_status', [Film::CURATION_UNDER_REVIEW, Film::CURATION_DETERMINATION])
+            ->count();
+        $officialSelection = Film::where('user_id', $userId)
+            ->where('curation_status', Film::CURATION_APPROVED)
+            ->count();
+        $ditolak           = Film::where('user_id', $userId)
+            ->where('curation_status', Film::CURATION_REJECTED)
+            ->count();
 
         // Tabel submission
         $submissions = Film::with(['user'])

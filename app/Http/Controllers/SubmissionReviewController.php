@@ -74,19 +74,22 @@ class SubmissionReviewController extends Controller
         $period = SubmissionSetting::findOrFail($validated['submission_setting_id']);
 
         if ($period->close_at && $period->close_at->isFuture()) {
-            return back()->with('warning', 'Kurasi hanya bisa dimulai setelah periode submission ditutup.');
+            return back()->with('warning', 'Penentuan hanya bisa dimulai setelah periode submission ditutup.');
         }
 
         $query = Film::where('submission_setting_id', $period->id)
-            ->where('curation_status', Film::CURATION_PENDING);
+            ->where('curation_status', Film::CURATION_UNDER_REVIEW);
 
         if (!empty($validated['category_id'])) {
             $query->where('category_id', $validated['category_id']);
         }
 
-        $count = $query->update(['curation_status' => Film::CURATION_UNDER_REVIEW]);
+        $count = $query->update([
+            'status' => Film::CURATION_DETERMINATION,
+            'curation_status' => Film::CURATION_DETERMINATION,
+        ]);
 
-        return back()->with('success', $count . ' film dipindahkan ke status Dalam Kurasi.');
+        return back()->with('success', $count . ' film dipindahkan ke status Dalam Penentuan.');
     }
 
     public function setOfficialSelection(Request $request)
@@ -102,7 +105,7 @@ class SubmissionReviewController extends Controller
 
         $eligibleIds = Film::where('submission_setting_id', $validated['submission_setting_id'])
             ->where('category_id', $validated['category_id'])
-            ->whereIn('curation_status', [Film::CURATION_UNDER_REVIEW, Film::CURATION_APPROVED])
+            ->whereIn('curation_status', [Film::CURATION_DETERMINATION, Film::CURATION_APPROVED])
             ->pluck('id');
 
         $selectedIds = collect($validated['film_ids'] ?? [])
@@ -113,10 +116,12 @@ class SubmissionReviewController extends Controller
             ->values();
 
         Film::whereIn('id', $selectedIds)->update([
+            'status' => Film::CURATION_APPROVED,
             'curation_status' => Film::CURATION_APPROVED,
         ]);
 
         Film::whereIn('id', $eligibleIds->diff($selectedIds))->update([
+            'status' => Film::CURATION_REJECTED,
             'curation_status' => Film::CURATION_REJECTED,
             'winner_rank' => null,
         ]);
@@ -133,6 +138,7 @@ class SubmissionReviewController extends Controller
         ]);
 
         $attributes = [
+            'status' => $validated['curation_status'],
             'curation_status' => $validated['curation_status'],
         ];
 
@@ -215,10 +221,14 @@ class SubmissionReviewController extends Controller
         ];
 
         foreach ($allowedScoreKeys as $itemId) {
-            $rules['scores.' . $itemId] = 'required|numeric|min:1|max:10';
+            $rules['scores.' . $itemId] = 'required|integer|min:1|max:10';
         }
 
-        $validated = $request->validate($rules);
+        $validated = $request->validate($rules, [
+            'scores.*.integer' => 'Nilai penilaian harus berupa angka bulat tanpa desimal.',
+            'scores.*.min' => 'Nilai penilaian minimal 1.',
+            'scores.*.max' => 'Nilai penilaian maksimal 10.',
+        ]);
         $totalScore = 0;
 
         DB::transaction(function () use ($film, $stage, $rubric, $items, $validated, &$totalScore) {
@@ -238,7 +248,7 @@ class SubmissionReviewController extends Controller
             $review->scores()->delete();
 
             foreach ($items as $item) {
-                $score = (float) $validated['scores'][$item->id];
+                $score = (int) $validated['scores'][$item->id];
                 $weight = (float) $item->weight;
                 $weightedScore = round($score * $weight, 2);
                 $totalScore += $weightedScore;
@@ -357,8 +367,15 @@ class SubmissionReviewController extends Controller
 
     protected function scoreBlockReason(Film $film, $stage)
     {
-        if ($stage === ReviewRubric::STAGE_CURATION && $film->curation_status !== Film::CURATION_UNDER_REVIEW) {
-            return 'Hanya film berstatus Dalam Kurasi yang dapat dinilai kurator.';
+        if (
+            $stage === ReviewRubric::STAGE_CURATION
+            && in_array($film->curation_status, [
+                Film::CURATION_DETERMINATION,
+                Film::CURATION_APPROVED,
+                Film::CURATION_REJECTED,
+            ], true)
+        ) {
+            return 'Kurator hanya dapat menilai film yang masih berstatus Dalam Kurasi.';
         }
 
         if ($stage === ReviewRubric::STAGE_JURY && $film->curation_status !== Film::CURATION_APPROVED) {

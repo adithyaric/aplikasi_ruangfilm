@@ -32,8 +32,8 @@ class FilmFactory extends Factory
             'film' => 'https://example.com/film',
             'kru' => 'kru/test.pdf',
             'other_1' => null,
-            'status' => Film::CURATION_PENDING,
-            'curation_status' => Film::CURATION_PENDING,
+            'status' => Film::CURATION_UNDER_REVIEW,
+            'curation_status' => Film::CURATION_UNDER_REVIEW,
             'winner_rank' => null,
         ];
     }

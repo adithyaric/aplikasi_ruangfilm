@@ -2,21 +2,29 @@
 @section('container')
 @php
 $detail = $film->user->detail;
+$displayStatus = $film->display_status;
 $statusMap = [
-    'pending' => ['label' => 'Menunggu Kurasi', 'color' => '#b87f00', 'bg' => '#fff8e0'],
     'under_review' => ['label' => 'Dalam Kurasi', 'color' => '#0c7c9f', 'bg' => '#e6f7fb'],
+    'pending' => ['label' => 'Dalam Penentuan', 'color' => '#b87f00', 'bg' => '#fff8e0'],
     'approved' => ['label' => 'Official Selection', 'color' => '#198754', 'bg' => '#e6f9ef'],
     'rejected' => ['label' => 'Ditolak Kurator', 'color' => '#dc3545', 'bg' => '#fde8e8'],
     'winner' => ['label' => $film->winner_rank ?: 'Pemenang', 'color' => '#6f42c1', 'bg' => '#f0ebff'],
 ];
-$s = $statusMap[$film->display_status] ?? ['label' => $film->display_status_label, 'color' => '#888', 'bg' => '#f5f5f5'];
+$s = $statusMap[$displayStatus] ?? ['label' => $film->display_status_label, 'color' => '#888', 'bg' => '#f5f5f5'];
 $timelineSteps = [
     1 => 'Submission Dikirim',
-    2 => 'Proses Kurasi',
-    3 => $film->curation_status === 'rejected' ? 'Ditolak Kurator' : 'Official Selection',
-    4 => $film->winner_rank ?: 'Hasil Juri',
+    2 => 'Dalam Kurasi',
+    3 => 'Dalam Penentuan',
+    4 => $film->winner_rank ?: ($displayStatus === \App\Models\Film::CURATION_REJECTED ? 'Ditolak Kurator' : 'Official Selection'),
 ];
-$currentStep = $film->winner_rank ? 4 : ($film->curation_status === 'approved' || $film->curation_status === 'rejected' ? 3 : 2);
+$currentStepMap = [
+    \App\Models\Film::CURATION_UNDER_REVIEW => 2,
+    \App\Models\Film::CURATION_DETERMINATION => 3,
+    \App\Models\Film::CURATION_APPROVED => 4,
+    \App\Models\Film::CURATION_REJECTED => 4,
+    'winner' => 4,
+];
+$currentStep = $currentStepMap[$displayStatus] ?? 2;
 @endphp
 <section class="content">
     <div class="row">

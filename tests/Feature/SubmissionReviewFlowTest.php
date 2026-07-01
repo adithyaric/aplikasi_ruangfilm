@@ -58,7 +58,7 @@ class SubmissionReviewFlowTest extends TestCase
 
         $this->assertSame($period->id, $film->submission_setting_id);
         $this->assertSame($category->id, $film->category_id);
-        $this->assertSame(Film::CURATION_PENDING, $film->curation_status);
+        $this->assertSame(Film::CURATION_UNDER_REVIEW, $film->curation_status);
     }
 
     public function test_admin_can_create_and_update_grouped_rubrics_manually()
@@ -493,12 +493,17 @@ class SubmissionReviewFlowTest extends TestCase
             ->assertSee('Detail catatan');
     }
 
-    public function test_only_under_review_films_can_be_scored_by_curators()
+    public function test_curators_cannot_score_films_that_are_already_in_determination()
     {
         $category = Category::factory()->create();
+        $closedPeriod = SubmissionSetting::factory()->create([
+            'open_at' => now()->subDays(10),
+            'close_at' => now()->subDay(),
+        ]);
         $film = Film::factory()->create([
+            'submission_setting_id' => $closedPeriod->id,
             'category_id' => $category->id,
-            'curation_status' => Film::CURATION_PENDING,
+            'curation_status' => Film::CURATION_DETERMINATION,
         ]);
         $rubric = $this->createRubric($category, ReviewRubric::STAGE_CURATION, [
             ['title' => 'Narasi', 'weight' => 10],
@@ -515,20 +520,84 @@ class SubmissionReviewFlowTest extends TestCase
         $this->assertDatabaseCount('submission_reviews', 0);
     }
 
+    public function test_closed_submission_period_does_not_override_existing_curation_status()
+    {
+        $category = Category::factory()->create();
+        $closedPeriod = SubmissionSetting::factory()->create([
+            'open_at' => now()->subDays(10),
+            'close_at' => now()->subDay(),
+        ]);
+        $film = Film::factory()->create([
+            'submission_setting_id' => $closedPeriod->id,
+            'category_id' => $category->id,
+            'curation_status' => Film::CURATION_UNDER_REVIEW,
+            'status' => Film::CURATION_UNDER_REVIEW,
+        ]);
+
+        $this->actingAs(User::factory()->role('admin')->create())
+            ->get(route('review.index', [
+                'submission_setting_id' => $closedPeriod->id,
+                'category_id' => $category->id,
+            ]))
+            ->assertOk();
+
+        $film->refresh();
+
+        $this->assertSame(Film::CURATION_UNDER_REVIEW, $film->curation_status);
+        $this->assertSame(Film::CURATION_UNDER_REVIEW, $film->status);
+    }
+
+    public function test_film_show_timeline_uses_the_same_under_review_status_seen_by_participants()
+    {
+        $category = Category::factory()->create();
+        $film = Film::factory()->create([
+            'category_id' => $category->id,
+            'curation_status' => Film::CURATION_UNDER_REVIEW,
+            'status' => Film::CURATION_UNDER_REVIEW,
+        ]);
+
+        $this->actingAs($film->user)
+            ->get(route('film.show', $film))
+            ->assertOk()
+            ->assertSeeTextInOrder(['Dalam Kurasi', 'Saat ini'])
+            ->assertDontSeeText('Dalam Penentuan Saat ini');
+    }
+
+    public function test_film_show_timeline_uses_official_selection_when_film_is_approved()
+    {
+        $category = Category::factory()->create();
+        $film = Film::factory()->create([
+            'category_id' => $category->id,
+            'curation_status' => Film::CURATION_APPROVED,
+            'status' => Film::CURATION_APPROVED,
+        ]);
+
+        $this->actingAs($film->user)
+            ->get(route('film.show', $film))
+            ->assertOk()
+            ->assertSeeTextInOrder(['Official Selection', 'Saat ini'])
+            ->assertDontSeeText('Dalam Penentuan Saat ini');
+    }
+
     public function test_official_selection_bulk_action_approves_checked_films_and_rejects_unchecked_films()
     {
         $admin = User::factory()->role('admin')->create();
         $category = Category::factory()->create();
-        $period = SubmissionSetting::factory()->create();
+        $period = SubmissionSetting::factory()->create([
+            'open_at' => now()->subDays(10),
+            'close_at' => now()->subDay(),
+        ]);
         $selectedFilm = Film::factory()->create([
             'submission_setting_id' => $period->id,
             'category_id' => $category->id,
-            'curation_status' => Film::CURATION_UNDER_REVIEW,
+            'curation_status' => Film::CURATION_DETERMINATION,
+            'status' => Film::CURATION_DETERMINATION,
         ]);
         $rejectedFilm = Film::factory()->create([
             'submission_setting_id' => $period->id,
             'category_id' => $category->id,
-            'curation_status' => Film::CURATION_UNDER_REVIEW,
+            'curation_status' => Film::CURATION_DETERMINATION,
+            'status' => Film::CURATION_DETERMINATION,
         ]);
 
         $this->actingAs($admin)
@@ -577,6 +646,56 @@ class SubmissionReviewFlowTest extends TestCase
             'reviewer_id' => $jury->id,
             'stage' => ReviewRubric::STAGE_JURY,
         ]);
+    }
+
+    public function test_curator_scores_must_be_whole_numbers()
+    {
+        $category = Category::factory()->create();
+        $film = Film::factory()->create([
+            'category_id' => $category->id,
+            'curation_status' => Film::CURATION_UNDER_REVIEW,
+        ]);
+        $rubric = $this->createRubric($category, ReviewRubric::STAGE_CURATION, [
+            ['title' => 'Narasi', 'weight' => 10],
+        ]);
+        $item = $rubric->groups()->first()->items()->first();
+        $curator = User::factory()->role('kurator')->create();
+
+        $this->actingAs($curator)
+            ->from(route('review.score', [$film, ReviewRubric::STAGE_CURATION]))
+            ->patch(route('review.score.update', [$film, ReviewRubric::STAGE_CURATION]), [
+                'scores' => [$item->id => '9.5'],
+            ])
+            ->assertRedirect(route('review.score', [$film, ReviewRubric::STAGE_CURATION]))
+            ->assertSessionHasErrors('scores.' . $item->id);
+
+        $this->assertDatabaseCount('submission_reviews', 0);
+    }
+
+    public function test_curator_scores_must_stay_between_one_and_ten()
+    {
+        $category = Category::factory()->create();
+        $film = Film::factory()->create([
+            'category_id' => $category->id,
+            'curation_status' => Film::CURATION_UNDER_REVIEW,
+        ]);
+        $rubric = $this->createRubric($category, ReviewRubric::STAGE_CURATION, [
+            ['title' => 'Narasi', 'weight' => 10],
+        ]);
+        $item = $rubric->groups()->first()->items()->first();
+        $curator = User::factory()->role('kurator')->create();
+
+        collect(['0', '-1', '11'])->each(function ($invalidScore) use ($curator, $film, $item) {
+            $this->actingAs($curator)
+                ->from(route('review.score', [$film, ReviewRubric::STAGE_CURATION]))
+                ->patch(route('review.score.update', [$film, ReviewRubric::STAGE_CURATION]), [
+                    'scores' => [$item->id => $invalidScore],
+                ])
+                ->assertRedirect(route('review.score', [$film, ReviewRubric::STAGE_CURATION]))
+                ->assertSessionHasErrors('scores.' . $item->id);
+        });
+
+        $this->assertDatabaseCount('submission_reviews', 0);
     }
 
     public function test_winner_rank_is_unique_per_submission_period_and_category()

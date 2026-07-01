@@ -64,18 +64,6 @@
                         <button type="submit" class="btn btn-primary">Filter</button>
                     </form>
 
-                    @if($isAdmin)
-                    <div style="margin-top:12px;">
-                        <form method="POST" action="{{ route('review.start-curation') }}" class="form-inline" style="display:inline-block; margin-right:8px;">
-                            @csrf
-                            <input type="hidden" name="submission_setting_id" value="{{ $selectedSubmissionSettingId }}">
-                            <input type="hidden" name="category_id" value="{{ $selectedCategoryId }}">
-                            <button type="submit" class="btn btn-warning btn-sm" {{ $selectedSubmissionSettingId ? '' : 'disabled' }}>
-                                Mulai Kurasi
-                            </button>
-                        </form>
-                    </div>
-                    @endif
                 </div>
                 <div class="box-body table-responsive">
                     <table id="example1" class="table table-bordered table-striped">

@@ -49,15 +49,25 @@
                                         @foreach($group->items as $item)
                                         @php
                                             $savedScore = optional($existingScores->get($item->id))->score;
+                                            $displayScore = filled($savedScore) ? (string) (int) round($savedScore) : null;
                                         @endphp
                                         <tr>
                                             <td><strong>{{ $item->title }}</strong></td>
                                             <td>{{ $item->description ?: '-' }}</td>
                                             <td>{{ number_format((float) $item->weight, 2) }}</td>
                                             <td>
-                                                <input type="number" class="form-control" name="scores[{{ $item->id }}]"
-                                                    min="1" max="10" step="0.01" required
-                                                    value="{{ old('scores.' . $item->id, $savedScore) }}">
+                                                <input
+                                                    type="text"
+                                                    class="form-control js-score-input"
+                                                    name="scores[{{ $item->id }}]"
+                                                    inputmode="numeric"
+                                                    pattern="^(10|[1-9])$"
+                                                    maxlength="2"
+                                                    title="Nilai harus berupa angka bulat 1 sampai 10."
+                                                    autocomplete="off"
+                                                    required
+                                                    value="{{ old('scores.' . $item->id, $displayScore) }}"
+                                                >
                                             </td>
                                         </tr>
                                         @endforeach
@@ -82,3 +92,41 @@
     </div>
 </section>
 @endsection
+
+@push('scripts')
+<script>
+    document.querySelectorAll('.js-score-input').forEach(function(input) {
+        var validateScoreInput = function(field) {
+            field.value = field.value.replace(/\D+/g, '').slice(0, 2);
+
+            if (!field.value) {
+                field.setCustomValidity('');
+                return;
+            }
+
+            var numeric = parseInt(field.value, 10);
+
+            if (Number.isNaN(numeric) || numeric < 1 || numeric > 10) {
+                field.setCustomValidity('Nilai harus berupa angka bulat 1 sampai 10.');
+                return;
+            }
+
+            field.setCustomValidity('');
+        };
+
+        input.addEventListener('input', function() {
+            validateScoreInput(this);
+        });
+
+        input.addEventListener('blur', function() {
+            validateScoreInput(this);
+
+            if (!this.checkValidity()) {
+                this.reportValidity();
+            }
+        });
+
+        validateScoreInput(input);
+    });
+</script>
+@endpush

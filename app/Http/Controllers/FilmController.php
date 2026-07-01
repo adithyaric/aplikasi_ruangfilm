@@ -153,8 +153,8 @@ class FilmController extends Controller
             'trailer'        => $request->trailer,
             'film'           => $request->film,
             'other_1'        => $other1Path,
-            'status'         => Film::CURATION_PENDING,
-            'curation_status' => Film::CURATION_PENDING,
+            'status'         => Film::CURATION_UNDER_REVIEW,
+            'curation_status' => Film::CURATION_UNDER_REVIEW,
         ]);
 
         return redirect()->route('film.index')

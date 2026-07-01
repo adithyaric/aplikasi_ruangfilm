@@ -9,8 +9,9 @@ class Film extends Model
 {
     use HasFactory;
 
-    public const CURATION_PENDING = 'pending';
     public const CURATION_UNDER_REVIEW = 'under_review';
+    public const CURATION_DETERMINATION = 'pending';
+    public const CURATION_PENDING = self::CURATION_DETERMINATION;
     public const CURATION_APPROVED = 'approved';
     public const CURATION_REJECTED = 'rejected';
 
@@ -62,7 +63,7 @@ class Film extends Model
             return 'winner';
         }
 
-        return $this->curation_status ?: static::CURATION_PENDING;
+        return $this->curation_status ?: static::CURATION_UNDER_REVIEW;
     }
 
     public function getDisplayStatusLabelAttribute()
@@ -70,11 +71,11 @@ class Film extends Model
         $status = $this->display_status;
 
         $labels = [
-            'pending'      => 'Menunggu Kurasi',
-            'under_review' => 'Dalam Kurasi',
-            'approved'     => 'Official Selection',
-            'rejected'     => 'Ditolak Kurator',
-            'winner'       => $this->winner_rank ?: 'Pemenang',
+            static::CURATION_UNDER_REVIEW => 'Dalam Kurasi',
+            static::CURATION_DETERMINATION => 'Dalam Penentuan',
+            static::CURATION_APPROVED => 'Official Selection',
+            static::CURATION_REJECTED => 'Ditolak Kurator',
+            'winner' => $this->winner_rank ?: 'Pemenang',
         ];
 
         return $labels[$status] ?? ucfirst($status);
@@ -83,8 +84,8 @@ class Film extends Model
     public static function curationStatusLabels()
     {
         return [
-            static::CURATION_PENDING => 'Menunggu Kurasi',
             static::CURATION_UNDER_REVIEW => 'Dalam Kurasi',
+            static::CURATION_DETERMINATION => 'Dalam Penentuan',
             static::CURATION_APPROVED => 'Official Selection',
             static::CURATION_REJECTED => 'Ditolak Kurator',
         ];

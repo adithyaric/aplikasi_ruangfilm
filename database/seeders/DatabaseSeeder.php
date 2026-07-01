@@ -511,7 +511,7 @@ class DatabaseSeeder extends Seeder
                 'email' => 'peserta.umum@gmail.com',
                 'category' => 'umum-nasional',
                 'name' => 'Malam di Rumah Tua',
-                'status' => Film::CURATION_PENDING,
+                'status' => Film::CURATION_UNDER_REVIEW,
             ],
             [
                 'email' => 'peserta.pelajar@gmail.com',
@@ -523,7 +523,7 @@ class DatabaseSeeder extends Seeder
                 'email' => 'peserta.organisasi@gmail.com',
                 'category' => 'organisasi-komunitas-pacitan',
                 'name' => 'Pintu yang Tidak Pernah Terkunci',
-                'status' => Film::CURATION_PENDING,
+                'status' => Film::CURATION_UNDER_REVIEW,
             ],
             [
                 'email' => 'peserta.pacitan@gmail.com',
