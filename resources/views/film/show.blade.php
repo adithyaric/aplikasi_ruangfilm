@@ -49,7 +49,7 @@ $currentStep = $currentStepMap[$displayStatus] ?? 2;
                             <div style="background:#fff; border:0.5px solid #e0e0e0; border-radius:10px; padding:16px; display:flex; gap:16px; align-items:flex-start;">
                                 <div style="width:80px; height:110px; border-radius:8px; overflow:hidden; flex-shrink:0; border:0.5px solid #e0e0e0;">
                                     @if($film->poster)
-                                    <img src="{{ asset('storage/' .$film->poster) }}" style="width:100%; height:100%; object-fit:cover;">
+                                    <img src="{{ $film->poster_url }}" style="width:100%; height:100%; object-fit:cover;">
                                     @else
                                     <div style="width:100%; height:100%; background:#f5f5f5; display:flex; align-items:center; justify-content:center; font-size:11px; color:#aaa;">No Poster</div>
                                     @endif
@@ -97,7 +97,7 @@ $currentStep = $currentStepMap[$displayStatus] ?? 2;
                                 {{-- Poster --}}
                                 <div style="background:#fff; border:0.5px solid #e0e0e0; border-radius:10px; overflow:hidden;">
                                     @if($film->poster)
-                                    <img src="{{ asset('storage/' .$film->poster) }}" style="width:100%; display:block; object-fit:cover;">
+                                    <img src="{{ $film->poster_url }}" style="width:100%; display:block; object-fit:cover;">
                                     @else
                                     <div style="width:100%; aspect-ratio:2/3; background:#f5f5f5; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;">
                                         <i class="fa fa-image" style="font-size:28px; color:#ccc;"></i>
@@ -333,7 +333,7 @@ $currentStep = $currentStepMap[$displayStatus] ?? 2;
                                     </div>
                                     <div>
                                         <div style="font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:3px;">Daftar Kru Film</div>
-                                        <div style="font-size:14px; font-weight:500;"><a href="{{ asset('storage/' . $film->kru) }}" target="_blank"
+                                        <div style="font-size:14px; font-weight:500;"><a href="{{ $film->kru_url }}" target="_blank"
                                                 style="font-size:13px; color:#0d6efd; display:inline-flex; align-items:center; gap:4px; text-decoration:none;">
                                                 <i class="fa fa-file"></i> Buka Daftar Kru <i class="fa fa-external-link" style="font-size:11px;"></i>
                                             </a></div>
@@ -347,7 +347,10 @@ $currentStep = $currentStepMap[$displayStatus] ?? 2;
 
                                 {{-- GSM Multiple --}}
                                 <div style="margin-bottom:14px;">
-                                    @php $gsmFiles = json_decode($film->gsm, true) ?? []; @endphp
+                                    @php
+                                    $gsmFiles = $film->gsm_files;
+                                    $gsmUrls = $film->gsm_urls;
+                                    @endphp
                                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
                                         <div style="font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.5px;">
                                             Grab Still Photo ({{ count($gsmFiles) }} file)
@@ -362,9 +365,9 @@ $currentStep = $currentStepMap[$displayStatus] ?? 2;
 
                                     <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:6px;">
                                         @foreach($gsmFiles as $i => $path)
-                                        <a href="{{ asset('storage/' . $path) }}" target="_blank"
+                                        <a href="{{ $gsmUrls[$i] ?? $film->mediaUrl($path) }}" target="_blank"
                                             style="display:block; aspect-ratio:1/1; border-radius:8px; overflow:hidden; border:0.5px solid #e0e0e0; position:relative; background:#f5f5f5;">
-                                            <img src="{{ asset('storage/' . $path) }}"
+                                            <img src="{{ $gsmUrls[$i] ?? $film->mediaUrl($path) }}"
                                                 style="width:100%; height:100%; object-fit:cover; display:block;">
                                             <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.45); color:#fff; font-size:10px; text-align:center; padding:3px 0;">
                                                 GSM {{ $i + 1 }}
@@ -406,7 +409,7 @@ $currentStep = $currentStepMap[$displayStatus] ?? 2;
                                     @elseif(in_array($film->category_id, [2,4])) Surat Rekomendasi Sekolah
                                     @endif
                                 </div>
-                                <a href="{{ asset('storage/'. $film->other_1) }}" target="_blank"
+                                <a href="{{ $film->other_1_url }}" target="_blank"
                                     style="display:flex; align-items:center; gap:8px; padding:8px 12px; border:0.5px solid #e0e0e0; border-radius:8px; background:#fafafa; font-size:13px; color:#333; text-decoration:none;">
                                     <i class="fa fa-file" style="color:#1db9a0;"></i>
                                     Lihat file
@@ -424,7 +427,7 @@ $currentStep = $currentStepMap[$displayStatus] ?? 2;
                         {{-- Poster --}}
                         <div style="background:#fff; border:0.5px solid #e0e0e0; border-radius:10px; overflow:hidden;">
                             @if($film->poster)
-                            <img src="{{ asset('storage/' .$film->poster) }}" style="width:100%; display:block; object-fit:cover;">
+                            <img src="{{ $film->poster_url }}" style="width:100%; display:block; object-fit:cover;">
                             @else
                             <div style="width:100%; aspect-ratio:2/3; background:#f5f5f5; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;">
                                 <i class="fa fa-image" style="font-size:28px; color:#ccc;"></i>

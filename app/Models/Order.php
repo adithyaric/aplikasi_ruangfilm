@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use App\Support\PublicMedia;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class Order extends Model
 {
@@ -132,36 +132,12 @@ class Order extends Model
 
     public function normalizedPaymentProofPath()
     {
-        $path = trim((string) $this->payment_proof_path);
-
-        if ($path === '' || Str::startsWith($path, ['http://', 'https://'])) {
-            return null;
-        }
-
-        if (Str::startsWith($path, 'storage/')) {
-            return ltrim(Str::after($path, 'storage/'), '/');
-        }
-
-        return ltrim($path, '/');
+        return PublicMedia::normalizeStoragePath($this->payment_proof_path);
     }
 
     public function paymentProofUrl()
     {
-        $path = trim((string) $this->payment_proof_path);
-
-        if ($path === '') {
-            return null;
-        }
-
-        if (Str::startsWith($path, ['http://', 'https://'])) {
-            return $path;
-        }
-
-        if (Str::startsWith($path, 'storage/')) {
-            return asset($path);
-        }
-
-        return asset('storage/' . ltrim($path, '/'));
+        return PublicMedia::url($this->payment_proof_path);
     }
 
     public function deleteStoredPaymentProof()

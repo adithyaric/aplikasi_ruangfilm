@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PublicMedia;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -115,5 +116,43 @@ class Film extends Model
     public function reviewCount($stage)
     {
         return $this->submissionReviews()->stage($stage)->count();
+    }
+
+    public function mediaUrl($path, $fallback = null)
+    {
+        return PublicMedia::url($path, $fallback);
+    }
+
+    public function getPosterUrlAttribute()
+    {
+        return $this->mediaUrl($this->poster, 'landing/images/user.png');
+    }
+
+    public function getKruUrlAttribute()
+    {
+        return $this->mediaUrl($this->kru);
+    }
+
+    public function getOther1UrlAttribute()
+    {
+        return $this->mediaUrl($this->other_1);
+    }
+
+    public function getGsmFilesAttribute()
+    {
+        return collect(json_decode($this->gsm ?? '[]', true))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    public function getGsmUrlsAttribute()
+    {
+        return collect($this->gsm_files)
+            ->map(function ($path) {
+                return $this->mediaUrl($path);
+            })
+            ->values()
+            ->all();
     }
 }

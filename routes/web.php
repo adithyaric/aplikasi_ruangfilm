@@ -14,6 +14,7 @@ use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LandingProgramController;
 use App\Http\Controllers\MerchandiseCategoryController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PublicStorageController;
 use App\Http\Controllers\ProgramCategoryController;
 use App\Http\Controllers\SubmissionReviewController;
 use App\Http\Controllers\SubmissionSettingController;
@@ -34,6 +35,10 @@ use Laravolt\Indonesia\Models\Province;
 | contains the "web" middleware group. Now create something great!
 |
 */
+
+Route::get('/storage/{path}', [PublicStorageController::class, 'show'])
+    ->where('path', '.*')
+    ->name('storage.public');
 
 // Landing
 Route::get('/', [LandingController::class, 'home'])->name('landing.home');

@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\PublicMedia;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
 
 class Category extends Model
 {
@@ -52,18 +52,6 @@ class Category extends Model
 
     public function getImageUrlAttribute()
     {
-        if (!$this->image) {
-            return asset('landing/images/user.png');
-        }
-
-        if (Str::startsWith($this->image, ['http://', 'https://'])) {
-            return $this->image;
-        }
-
-        if (Str::startsWith($this->image, ['landing/', 'img/', 'assets/'])) {
-            return asset($this->image);
-        }
-
-        return asset('storage/' . ltrim($this->image, '/'));
+        return PublicMedia::url($this->image, 'landing/images/user.png');
     }
 }

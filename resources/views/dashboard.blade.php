@@ -282,7 +282,7 @@
                                 <td style="vertical-align:middle;">
                                     <div style="display:flex;align-items:center;gap:10px;">
                                         @if($item->poster)
-                                        <img src="{{ asset('storage/' .$item->poster) }}"
+                                        <img src="{{ $item->poster_url }}"
                                             style="width:80px;height:104px;border-radius:5px;object-fit:cover;flex-shrink:0;">
                                         @else
                                         <div style="width:80px;height:104px;border-radius:5px;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:10px;color:#999;flex-shrink:0;">N/A</div>

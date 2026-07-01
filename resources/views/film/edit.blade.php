@@ -152,7 +152,7 @@
                                     <label>Daftar Kru Film</label>
                                     @if($film->kru)
                                     <div style="margin-bottom:8px;">
-                                        <a href="{{ asset('storage/' . $film->kru) }}" target="_blank"
+                                        <a href="{{ $film->kru_url }}" target="_blank"
                                             style="font-size:12px; color:#0d6efd;">
                                             <i class="fa fa-file"></i> File kru saat ini — klik untuk lihat
                                         </a>
@@ -176,7 +176,7 @@
                                     <label>Poster Film</label>
                                     @if($film->poster)
                                     <div style="margin-bottom:8px;">
-                                        <img src="{{ asset('storage/' . $film->poster) }}"
+                                        <img src="{{ $film->poster_url }}"
                                             style="height:100px; border-radius:6px; border:0.5px solid #ddd; object-fit:cover;">
                                         <div style="font-size:11px; color:red; margin-top:4px;">Poster saat ini. Upload baru untuk mengganti.</div>
                                     </div>
@@ -188,12 +188,15 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Grab Still Photo</label>
-                                    @php $gsmFiles = json_decode($film->gsm, true) ?? []; @endphp
+                                    @php
+                                    $gsmFiles = $film->gsm_files;
+                                    $gsmUrls = $film->gsm_urls;
+                                    @endphp
                                     @if(count($gsmFiles) > 0)
                                     <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:4px; margin-bottom:8px;">
                                         @foreach($gsmFiles as $i => $path)
                                         <div style="aspect-ratio:1/1; border-radius:6px; overflow:hidden; border:0.5px solid #ddd; position:relative;">
-                                            <img src="{{ asset('storage/' . $path) }}"
+                                            <img src="{{ $gsmUrls[$i] ?? $film->mediaUrl($path) }}"
                                                 style="width:100%; height:100%; object-fit:cover;">
                                             <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.45);color:#fff;font-size:9px;text-align:center;padding:2px 0;">
                                                 {{ $i + 1 }}
@@ -237,7 +240,7 @@
                             </label>
                             @if($film->other_1)
                             <div style="margin:6px 0 8px;">
-                                <a href="{{ asset('storage/' . $film->other_1) }}" target="_blank"
+                                <a href="{{ $film->other_1_url }}" target="_blank"
                                     style="font-size:12px; color:#0a7a5e;">
                                     <i class="fa fa-file"></i> File saat ini — klik untuk lihat
                                 </a>

@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\PublicMedia;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
 
 class Program extends Model
 {
@@ -33,18 +33,6 @@ class Program extends Model
 
     public function getPosterUrlAttribute()
     {
-        if (!$this->poster) {
-            return asset('landing/images/BACKGROUND FFH 2026.png');
-        }
-
-        if (Str::startsWith($this->poster, ['http://', 'https://'])) {
-            return $this->poster;
-        }
-
-        if (Str::startsWith($this->poster, ['landing/', 'img/', 'assets/'])) {
-            return asset($this->poster);
-        }
-
-        return asset('storage/' . ltrim($this->poster, '/'));
+        return PublicMedia::url($this->poster, 'landing/images/BACKGROUND FFH 2026.png');
     }
 }

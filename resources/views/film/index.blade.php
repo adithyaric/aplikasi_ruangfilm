@@ -61,7 +61,7 @@
                                 <td>
                                     <div style="display:flex; align-items:center; gap:10px;">
                                         @if($film->poster)
-                                        <img src="{{ asset('storage/' .$film->poster) }}"
+                                        <img src="{{ $film->poster_url }}"
                                             style="width:72px; height:96px; object-fit:cover; border-radius:4px; flex-shrink:0; border:1px solid #ddd;">
                                         @else
                                         <div style="width:36px; height:48px; background:#eee; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#aaa; flex-shrink:0;">

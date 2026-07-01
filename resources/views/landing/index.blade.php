@@ -193,7 +193,7 @@
                                         <div class="relative rounded-2xl overflow-hidden glass-card-light transition-all duration-300 group-hover:scale-[1.02] group-hover:shadow-[0_0_20px_#6D28D9]">
                                             <div class="relative w-full h-72 overflow-hidden bg-gradient-to-b from-purple-900/30 to-black/50">
                                                 <img
-                                                    src="{{ $film->poster ? asset('storage/' . $film->poster) : asset('landing/images/user.png') }}"
+                                                    src="{{ $film->poster_url }}"
                                                     alt="{{ $film->name }}"
                                                     class="absolute w-full h-full object-cover transition-opacity duration-700 ease-in-out" />
                                                 <div class="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
@@ -272,7 +272,7 @@
                             <div class="group transition-all duration-300">
                                 <div class="rounded-2xl overflow-hidden glass-card-light transition-all duration-300 group-hover:scale-[1.03] group-hover:shadow-[0_0_25px_#6D28D9]">
                                     <img
-                                        src="{{ $film->poster ? asset('storage/' . $film->poster) : asset('landing/images/user.png') }}"
+                                        src="{{ $film->poster_url }}"
                                         alt="{{ $film->name }}"
                                         class="w-full h-80 object-cover" />
                                     <div class="p-5 space-y-2">

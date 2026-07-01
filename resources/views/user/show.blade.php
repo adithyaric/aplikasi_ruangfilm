@@ -197,7 +197,7 @@
                                                 <div style="display:flex; align-items:center; gap:10px;">
 
                                                     @if($film->poster)
-                                                    <img src="{{ asset('storage/' . $film->poster) }}"
+                                                    <img src="{{ $film->poster_url }}"
                                                         style="
                                                             width:72px;
                                                             height:96px;

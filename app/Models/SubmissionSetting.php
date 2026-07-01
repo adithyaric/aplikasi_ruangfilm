@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use App\Support\PublicMedia;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 
 class SubmissionSetting extends Model
 {
@@ -109,19 +109,7 @@ class SubmissionSetting extends Model
 
     public function mediaUrl($path, $fallback = null)
     {
-        if (!$path) {
-            return $fallback ? asset($fallback) : null;
-        }
-
-        if (Str::startsWith($path, ['http://', 'https://'])) {
-            return $path;
-        }
-
-        if (Str::startsWith($path, ['landing/', 'img/', 'assets/'])) {
-            return asset($path);
-        }
-
-        return asset('storage/' . ltrim($path, '/'));
+        return PublicMedia::url($path, $fallback);
     }
 
     public static function defaultTimelineItems($openAt = null, $closeAt = null, $displayName = null)
