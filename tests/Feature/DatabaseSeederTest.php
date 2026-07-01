@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Category;
 use App\Models\Program;
 use App\Models\ProgramCategory;
+use App\Models\ReviewRubric;
 use App\Models\SubmissionSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,10 +31,12 @@ class DatabaseSeederTest extends TestCase
         $this->assertDatabaseHas('merchandises', ['slug' => 'official-festival-t-shirt']);
         $this->assertDatabaseHas('expeditions', ['name' => 'JNE', 'service_name' => 'REG']);
         $this->assertDatabaseHas('bank_accounts', ['rek_bank_name' => 'BCA']);
+        $this->assertDatabaseHas('review_rubric_items', ['title' => 'Rasa Takut Yang Bermakna']);
 
         $this->assertCount(3, SubmissionSetting::orderBy('open_at')->get());
         $this->assertCount(3, ProgramCategory::ordered()->get());
         $this->assertCount(15, Program::ordered()->get());
+        $this->assertSame(8, ReviewRubric::query()->count());
         $this->assertTrue(SubmissionSetting::where('name', 'Periode Akhir 2026')->exists());
         $this->assertTrue(Category::where('slug', 'pelajar-jawa-timur')->exists());
         $this->assertTrue(User::where('email', 'peserta.pelajar@gmail.com')->exists());
